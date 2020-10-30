@@ -16,11 +16,15 @@ int main(int argc, char* argv[]) {
 		return errno;
 	}
 
+	// info gathering
 	int lncount, widestln, maxtokens;
 	getinfo(input, &lncount, &widestln, &maxtokens);
+
+	// parsing
 	struct line** lns = parse(input, lncount, widestln, maxtokens);
+	fclose(input);
 	
-	printf("lns: %i\n", lncount);
+	// printing
 	for(int i = 0; i < lncount; i++) {
 		int tkcount = lns[i]->tokenscount;
 		for(int j = 0; j < tkcount; j++) {
@@ -28,6 +32,9 @@ int main(int argc, char* argv[]) {
 		}
 		printf("\n");
 	}
+
+	// freeing
+	freelns(lns, lncount);
 
 	return 0;
 }

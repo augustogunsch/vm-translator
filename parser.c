@@ -4,6 +4,18 @@
 #include <string.h>
 #include "parser.h"
 
+void freelns(struct line** lns, int lnscount) {
+	for(int i = 0; i < lnscount; i++) {
+		int tkcount = lns[i]->tokenscount;
+		for(int j = 0; j < tkcount; j++) {
+			free(lns[i]->tokens[j]);
+		}
+		free(lns[i]->tokens);
+		free(lns[i]);
+	}
+	free(lns);
+}
+
 void gountilbrk (FILE* input) {
 	char c;
 	while(c = fgetc(input), c != -1) {
@@ -23,9 +35,13 @@ void getinfo(FILE* input, int* lncount, int* widestln, int* maxtokens) {
 	int maxtoks = 0;
 	short readsmt = 0;
 	while(c = fgetc(input), c != -1) {
-		if(isspace(c) && readsmt) {
-			tokens++;
-			if(c == '\n') {
+		currsz++;
+		if(isspace(c)) {
+			if(readsmt) {
+				tokens++;
+				readsmt = 0;
+			}
+			if(c == '\n' && tokens > 0) {
 				lns++;
 				if(currsz > widest)
 					widest = currsz;
@@ -34,7 +50,6 @@ void getinfo(FILE* input, int* lncount, int* widestln, int* maxtokens) {
 				currsz = 0;
 				tokens = 0;
 			}
-			readsmt = 0;
 			continue;
 		}
 
@@ -47,7 +62,6 @@ void getinfo(FILE* input, int* lncount, int* widestln, int* maxtokens) {
 			ungetc(nc, input);
 		}
 
-		currsz++;
 		readsmt = 1;
 	}
 	rewind(input);

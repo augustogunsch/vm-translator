@@ -1,6 +1,6 @@
 FILES = parser.c main.c
 INCLUDES = -I.
-CFLAGS = -std=c99 -g
+CFLAGS = -std=c99
 OUTFILE = vmtranslator
 
 main: ${FILES}
