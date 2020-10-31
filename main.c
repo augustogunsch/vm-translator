@@ -18,10 +18,10 @@ char* verfname(char* fname) {
 					break;
 				}
 			}
-			int size = sizeof(char)*(extind - startind);
+			int size = sizeof(char)*(extind - startind + 1);
 			char* startstr = fname + (sizeof(char)*startind);
 			char* retstr = (char*)malloc(size);
-			strncpy(retstr, startstr, size);
+			snprintf(retstr, size, "%s", startstr);
 			return retstr;
 		}
 	}
@@ -36,7 +36,6 @@ int main(int argc, char* argv[]) {
 	}
 	// file name validating
 	char* fname = verfname(argv[1]);
-	printf("%s\n", fname);
 	
 	FILE* input = fopen(argv[1], "r");
 
@@ -55,7 +54,7 @@ int main(int argc, char* argv[]) {
 
 	// translating
 	int asmcount = 0;
-	struct asmln** asmlns = translate(lns, lncount, &asmcount);
+	struct asmln** asmlns = translate(lns, lncount, &asmcount, fname);
 
 	// freeing lns
 	freelns(lns, lncount);
@@ -66,6 +65,7 @@ int main(int argc, char* argv[]) {
 	}
 
 	// freeing asmlns
+	free(fname);
 	freeasmlns(asmlns, asmcount);
 
 	return 0;

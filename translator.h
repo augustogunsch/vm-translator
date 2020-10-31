@@ -7,5 +7,5 @@ struct asmln {
 };
 
 void freeasmlns(struct asmln** lns, int count);
-struct asmln** translate(struct line** lns, int lnscount, int* asmcount);
+struct asmln** translate(struct line** lns, int lnscount, int* asmcount, char* fname);
 #endif

@@ -40,6 +40,8 @@ char* switchseg(struct line* ln) {
 		return heapstr("@THIS");
 	if(strcmp(seg, "that") == 0)
 		return heapstr("@THAT");
+	fprintf(stderr, "Unrecognized segment '%s'; line %i\n", seg, ln->truen);
+	exit(1);
 }
 
 // produce comment as follows:
@@ -64,6 +66,22 @@ char* mkind(char* ind, int indsz) {
 	int newsz = sizeof(char) * (indsz + 2);
 	char* newind = (char*)malloc(newsz);
 	snprintf(newind, newsz, "@%s", ind);
+	return newind;
+}
+
+char* mkstatind(char* ind, int indsz, char* fname) {
+	int fnamelen = strlen(fname);
+	int newsz = sizeof(char) * (fnamelen + indsz + 3);
+	char* newind = (char*)malloc(newsz);
+	snprintf(newind, newsz, "@%s.%s", fname, ind);
+	return newind;
+}
+
+char* mktempind(char* ind, int indsz) {
+	int intind = atoi(ind);
+	int newsz = sizeof(char) * (indsz + 3);
+	char* newind = (char*)malloc(newsz);
+	snprintf(newind, newsz, "@%i", intind+5);
 	return newind;
 }
 
@@ -119,12 +137,12 @@ void startpoppush(struct line* ln, struct asmln*** asmlns, int* asmind) {
 }
 
 void pushcons(struct line* ln, struct asmln*** asmlns, int* asmind, int* asmsize) {
+	checkopamnt(3, ln);
 	int asmi = *asmind;
 	int totalinstrs = 8;
-
 	checkasmsize(asmsize, asmlns, sizeof(struct asmln*)*(asmi+totalinstrs));
 
-	// // operation segment i
+	// // push constant i
 	int indlen = strlen(ln->tokens[2]);
 	(*asmlns)[asmi] = mkasmln(ln, mkcom(ln, indlen));
 	asmi++;
@@ -152,10 +170,113 @@ void pushcons(struct line* ln, struct asmln*** asmlns, int* asmind, int* asmsize
 	(*asmind) = asmi;
 }
 
+void pushstat(struct line* ln, struct asmln*** asmlns, int* asmind, int* asmsize, char* fname) {
+	checkopamnt(3, ln);
+	int asmi = *asmind;
+	int totalinstrs = 8;
+	checkasmsize(asmsize, asmlns, sizeof(struct asmln*)*(asmi+totalinstrs));
+
+	// // push static i
+	int indlen = strlen(ln->tokens[2]);
+	(*asmlns)[asmi] = mkasmln(ln, mkcom(ln, indlen));
+	asmi++;
+
+	// @fname.i
+	checkind(ln, indlen);
+	(*asmlns)[asmi] = mkasmln(ln, mkstatind(ln->tokens[2], indlen, fname));
+	asmi++;
+
+	const int instcount = 6;
+	const char* instrs[] = { 
+		"D=M",
+		"@SP",
+		"A=M",
+		"M=D",
+		"@SP",
+		"M=M+1"
+	};
+
+	for(int i = 0; i < instcount; i++) {
+		(*asmlns)[asmi] = mkasmln(ln, heapstr(instrs[i]));
+		asmi++;
+	}
+	
+	(*asmind) = asmi;
+}
+
+void popstat(struct line* ln, struct asmln*** asmlns, int* asmind, int* asmsize, char* fname) {
+	checkopamnt(3, ln);
+	int asmi = *asmind;
+	int totalinstrs = 8;
+	checkasmsize(asmsize, asmlns, sizeof(struct asmln*)*(asmi+totalinstrs));
+
+	// // pop static i
+	int indlen = strlen(ln->tokens[2]);
+	(*asmlns)[asmi] = mkasmln(ln, mkcom(ln, indlen));
+	asmi++;
+
+	const int instcount = 5;
+	const char* instrs[] = { 
+		"@SP",
+		"D=M",
+		"M=M-1",
+		"A=D",
+		"D=M"
+	};
+
+	for(int i = 0; i < instcount; i++) {
+		(*asmlns)[asmi] = mkasmln(ln, heapstr(instrs[i]));
+		asmi++;
+	}
+
+	// @fname.i
+	checkind(ln, indlen);
+	(*asmlns)[asmi] = mkasmln(ln, mkstatind(ln->tokens[2], indlen, fname));
+	asmi++;
+
+	// M=D
+	(*asmlns)[asmi] = mkasmln(ln, heapstr("M=D"));
+	asmi++;
+	
+	(*asmind) = asmi;
+}
+
+void pushtemp(struct line* ln, struct asmln*** asmlns, int* asmind, int* asmsize) {
+	int asmi = *asmind;
+	int totalinstrs = 8;
+	checkasmsize(asmsize, asmlns, sizeof(struct asmln*)*(asmi+totalinstrs));
+
+	// // pop static i
+	int indlen = strlen(ln->tokens[2]);
+	(*asmlns)[asmi] = mkasmln(ln, mkcom(ln, indlen));
+	asmi++;
+	
+	// @5+i
+	checkind(ln, indlen);
+	(*asmlns)[asmi] = mkasmln(ln, mktempind(ln->tokens[2], indlen));
+	asmi++;
+
+	const int instcount = 6;
+	const char* instrs[] = {
+		"D=M",
+		"@SP",
+		"A=M",
+		"M=D",
+		"@SP",
+		"M=M+1"
+	};
+
+	for(int i = 0; i < instcount; i++) {
+		(*asmlns)[asmi] = mkasmln(ln, heapstr(instrs[i]));
+		asmi++;
+	}
+
+	(*asmind) = asmi;
+}
+
 void mkpush(struct line* ln, struct asmln*** asmlns, int* asmind, int* asmsize) {
 	int asmi = *asmind;
 	int totalinstrs = 11;
-
 	checkasmsize(asmsize, asmlns, sizeof(struct asmln*)*(asmi+totalinstrs));
 
 	startpoppush(ln, asmlns, &asmi);
@@ -179,10 +300,45 @@ void mkpush(struct line* ln, struct asmln*** asmlns, int* asmind, int* asmsize) 
 	(*asmind) = asmi;
 }
 
+void poptemp(struct line* ln, struct asmln*** asmlns, int* asmind, int* asmsize) {
+	int asmi = *asmind;
+	int totalinstrs = 7;
+	checkasmsize(asmsize, asmlns, sizeof(struct asmln*)*(asmi+totalinstrs));
+
+	// // pop static i
+	int indlen = strlen(ln->tokens[2]);
+	(*asmlns)[asmi] = mkasmln(ln, mkcom(ln, indlen));
+	asmi++;
+
+	const int instcount = 4;
+	const char* instrs[] = {
+		"@SP",
+		"M=M-1",
+		"A=M",
+		"D=M"
+	};
+
+	for(int i = 0; i < instcount; i++) {
+		(*asmlns)[asmi] = mkasmln(ln, heapstr(instrs[i]));
+		asmi++;
+	}
+	
+	// @5+i
+	checkind(ln, indlen);
+	(*asmlns)[asmi] = mkasmln(ln, mktempind(ln->tokens[2], indlen));
+	asmi++;
+
+	// M=D
+	(*asmlns)[asmi] = mkasmln(ln, heapstr("M=D"));
+	asmi++;
+
+	(*asmind) = asmi;
+}
+
 void mkpop(struct line* ln, struct asmln*** asmlns, int* asmind, int* asmsize) {
 	int asmi = *asmind;
-	int finalasmi = 14;
-	checkasmsize(asmsize, asmlns, sizeof(struct asmln*)*(asmi+finalasmi));
+	int totalinstrs = 14;
+	checkasmsize(asmsize, asmlns, sizeof(struct asmln*)*(asmi+totalinstrs));
 
 	startpoppush(ln, asmlns, &asmi);
 
@@ -208,17 +364,26 @@ void mkpop(struct line* ln, struct asmln*** asmlns, int* asmind, int* asmsize) {
 	(*asmind) = asmi;
 }
 
-void switchop(struct line* ln, struct asmln*** asmlns, int* asmind, int* asmsize, enum operation op) {
+void switchop(struct line* ln, struct asmln*** asmlns, int* asmind, int* asmsize, enum operation op, char* fname) {
 	if(op == push)
 		if(strcmp(ln->tokens[1], "constant") == 0)
 			pushcons(ln, asmlns, asmind, asmsize);
+		else if(strcmp(ln->tokens[1], "static") == 0)
+			pushstat(ln, asmlns, asmind, asmsize, fname);
+		else if(strcmp(ln->tokens[1], "temp") == 0)
+			pushtemp(ln, asmlns, asmind, asmsize);
 		else
 			mkpush(ln, asmlns, asmind, asmsize);
 	else if(op == pop)
-		mkpop(ln, asmlns, asmind, asmsize);
+		if(strcmp(ln->tokens[1], "static") == 0)
+			popstat(ln, asmlns, asmind, asmsize, fname);
+		else if(strcmp(ln->tokens[1], "temp") == 0)
+			poptemp(ln, asmlns, asmind, asmsize);
+		else
+			mkpop(ln, asmlns, asmind, asmsize);
 }
 
-struct asmln** translate(struct line** lns, int lnscount, int* asmcount) {
+struct asmln** translate(struct line** lns, int lnscount, int* asmcount, char* fname) {
 	int sizebet = sizeof(struct asmln*)*(lnscount * 15);
 	int asmi = (*asmcount);
 	struct asmln** asmlns = (struct asmln**)malloc(sizebet);
@@ -226,7 +391,7 @@ struct asmln** translate(struct line** lns, int lnscount, int* asmcount) {
 	for(int i = 0; i < lnscount; i++) {
 		struct line* ln = lns[i];
 		enum operation op = getop(ln);
-		switchop(ln, &asmlns, &asmi, &sizebet, op);
+		switchop(ln, &asmlns, &asmi, &sizebet, op, fname);
 	}
 
 	(*asmcount) = asmi;
