@@ -4,18 +4,6 @@
 #include <ctype.h>
 #include "translator.h"
 
-enum operation { push, pop };
-
-enum operation getop(struct line* ln) {
-	char* tok = ln->tokens[0];
-	if(strcmp(tok, "push") == 0)
-		return push;
-	if(strcmp(tok, "pop") == 0)
-		return pop;
-	fprintf(stderr, "Invalid operation '%s'; line %i\n", tok, ln->truen);
-	exit(1);
-}
-
 void freeasmlns(struct asmln** lns, int count) {
 	for(int i = 0; i < count; i++) {
 		free(lns[i]->instr);
@@ -364,8 +352,8 @@ void mkpop(struct line* ln, struct asmln*** asmlns, int* asmind, int* asmsize) {
 	(*asmind) = asmi;
 }
 
-void switchop(struct line* ln, struct asmln*** asmlns, int* asmind, int* asmsize, enum operation op, char* fname) {
-	if(op == push)
+void switchop(struct line* ln, struct asmln*** asmlns, int* asmind, int* asmsize, char* fname) {
+	if(strcmp(ln->tokens[0], "push") == 0)
 		if(strcmp(ln->tokens[1], "constant") == 0)
 			pushcons(ln, asmlns, asmind, asmsize);
 		else if(strcmp(ln->tokens[1], "static") == 0)
@@ -374,7 +362,7 @@ void switchop(struct line* ln, struct asmln*** asmlns, int* asmind, int* asmsize
 			pushtemp(ln, asmlns, asmind, asmsize);
 		else
 			mkpush(ln, asmlns, asmind, asmsize);
-	else if(op == pop)
+	else if(strcmp(ln->tokens[0], "pop") == 0)
 		if(strcmp(ln->tokens[1], "static") == 0)
 			popstat(ln, asmlns, asmind, asmsize, fname);
 		else if(strcmp(ln->tokens[1], "temp") == 0)
@@ -390,8 +378,7 @@ struct asmln** translate(struct line** lns, int lnscount, int* asmcount, char* f
 	
 	for(int i = 0; i < lnscount; i++) {
 		struct line* ln = lns[i];
-		enum operation op = getop(ln);
-		switchop(ln, &asmlns, &asmi, &sizebet, op, fname);
+		switchop(ln, &asmlns, &asmi, &sizebet, fname);
 	}
 
 	(*asmcount) = asmi;
