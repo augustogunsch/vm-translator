@@ -6,5 +6,6 @@ struct asmln {
 	int truen;
 };
 
-struct asmln** translate(struct line** lns, int lnscount, int* asmind);
+void freeasmlns(struct asmln** lns, int count);
+struct asmln** translate(struct line** lns, int lnscount, int* asmcount);
 #endif

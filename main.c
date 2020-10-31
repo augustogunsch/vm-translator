@@ -26,25 +26,19 @@ int main(int argc, char* argv[]) {
 	fclose(input);
 
 	// translating
-	int asmind = 0;
-	struct asmln** asmlns = translate(lns, lncount, &asmind);
+	int asmcount = 0;
+	struct asmln** asmlns = translate(lns, lncount, &asmcount);
+
+	// freeing lns
+	freelns(lns, lncount);
 	
 	// printing
-	for(int i = 0; i < asmind; i++) {
+	for(int i = 0; i < asmcount; i++) {
 		printf("%s\n", asmlns[i]->instr);
 	}
-	/*
-	for(int i = 0; i < lncount; i++) {
-		int tkcount = lns[i]->tokenscount;
-		for(int j = 0; j < tkcount; j++) {
-			printf("%s ", lns[i]->tokens[j]);
-		}
-		printf("\n");
-	}
-	*/
 
-	// freeing
-	freelns(lns, lncount);
+	// freeing asmlns
+	freeasmlns(asmlns, asmcount);
 
 	return 0;
 }

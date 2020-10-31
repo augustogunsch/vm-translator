@@ -16,6 +16,14 @@ enum operation getop(struct line* ln) {
 	exit(1);
 }
 
+void freeasmlns(struct asmln** lns, int count) {
+	for(int i = 0; i < count; i++) {
+		free(lns[i]->instr);
+		free(lns[i]);
+	}
+	free(lns);
+}
+
 char* heapstr(const char* input) {
 	char* newstr = (char*)malloc(sizeof(char)*(strlen(input)+1));
 	strcpy(newstr, input);
@@ -59,11 +67,10 @@ char* mkind(char* ind, int indsz) {
 	return newind;
 }
 
-void checkasmsize(int* size, struct asmln** lns, int targ) {
+void checkasmsize(int* size, struct asmln*** lns, int targ) {
 	if(targ >= (*size)) {
-		printf("realloc'd");
 		(*size)=targ*2;
-		(*lns) = realloc((*lns), (*size));
+		(*lns) = (struct asmln**)realloc((*lns), (*size));
 	}
 }
 
@@ -74,31 +81,44 @@ struct asmln* mkasmln(struct line* ln, char* content) {
 	return newln;
 }
 
-void startpoppush(struct line* ln, struct asmln** asmlns, int* asmind) {
+void checkopamnt(int amnt, struct line* ln) {
+	if(ln->tokenscount < 2) {
+		fprintf(stderr, "Missing memory segment; line %i", ln->truen);
+		exit(1);
+	}
+	if(amnt > 2)
+		if(ln->tokenscount < 3) {
+			fprintf(stderr, "Missing operation index; line %i", ln->truen);
+			exit(1);
+		}
+}
+
+void startpoppush(struct line* ln, struct asmln*** asmlns, int* asmind) {
+	checkopamnt(3, ln);
 	int asmi = *asmind;
 
-	// //operation segment i
+	// // operation segment i
 	int indlen = strlen(ln->tokens[2]);
-	asmlns[asmi] = mkasmln(ln, mkcom(ln, indlen));
+	(*asmlns)[asmi] = mkasmln(ln, mkcom(ln, indlen));
 	asmi++;
 	
 	// @segment
-	asmlns[asmi] = mkasmln(ln, switchseg(ln));
+	(*asmlns)[asmi] = mkasmln(ln, switchseg(ln));
 	asmi++;
 	
 	// D=M
-	asmlns[asmi] = mkasmln(ln, heapstr("D=M"));
+	(*asmlns)[asmi] = mkasmln(ln, heapstr("D=M"));
 	asmi++;
 
 	// @i
 	checkind(ln, indlen);
-	asmlns[asmi] = mkasmln(ln, mkind(ln->tokens[2], indlen));
+	(*asmlns)[asmi] = mkasmln(ln, mkind(ln->tokens[2], indlen));
 	asmi++;
 
 	(*asmind) = asmi;
 }
 
-void mkpush(struct line* ln, struct asmln** asmlns, int* asmind, int* asmsize) {
+void mkpush(struct line* ln, struct asmln*** asmlns, int* asmind, int* asmsize) {
 	int asmi = *asmind;
 	int totalinstrs = 11;
 	checkasmsize(asmsize, asmlns, sizeof(struct asmln*)*(asmi+totalinstrs));
@@ -117,14 +137,14 @@ void mkpush(struct line* ln, struct asmln** asmlns, int* asmind, int* asmsize) {
 	};
 
 	for(int i = 0; i < instcount; i++) {
-		asmlns[asmi] = mkasmln(ln, heapstr(instrs[i]));
+		(*asmlns)[asmi] = mkasmln(ln, heapstr(instrs[i]));
 		asmi++;
 	}
 
 	(*asmind) = asmi;
 }
 
-void mkpop(struct line* ln, struct asmln** asmlns, int* asmind, int* asmsize) {
+void mkpop(struct line* ln, struct asmln*** asmlns, int* asmind, int* asmsize) {
 	int asmi = *asmind;
 	int finalasmi = 14;
 	checkasmsize(asmsize, asmlns, sizeof(struct asmln*)*(asmi+finalasmi));
@@ -146,45 +166,31 @@ void mkpop(struct line* ln, struct asmln** asmlns, int* asmind, int* asmsize) {
 	};
 
 	for(int i = 0; i < instcount; i++) {
-		asmlns[asmi] = mkasmln(ln, heapstr(instrs[i]));
+		(*asmlns)[asmi] = mkasmln(ln, heapstr(instrs[i]));
 		asmi++;
 	}
 
 	(*asmind) = asmi;
 }
 
-void mkpoppush(struct line* ln, struct asmln** asmlns, int* asmind, int* asmsize, enum operation op) {
+void switchop(struct line* ln, struct asmln*** asmlns, int* asmind, int* asmsize, enum operation op) {
 	if(op == push)
 		mkpush(ln, asmlns, asmind, asmsize);
 	else if(op == pop)
 		mkpop(ln, asmlns, asmind, asmsize);
 }
 
-void checkopamnt(struct line* ln) {
-	if(ln->tokenscount < 2) {
-		fprintf(stderr, "Missing memory segment; line %i", ln->truen);
-		exit(1);
-	}
-	if(ln->tokenscount < 3) {
-		fprintf(stderr, "Missing operation index; line %i", ln->truen);
-		exit(1);
-	}
-}
-
-struct asmln** translate(struct line** lns, int lnscount, int* asmind) {
+struct asmln** translate(struct line** lns, int lnscount, int* asmcount) {
 	int sizebet = sizeof(struct asmln*)*(lnscount * 15);
-	int asmi = (*asmind);
+	int asmi = (*asmcount);
 	struct asmln** asmlns = (struct asmln**)malloc(sizebet);
 	
 	for(int i = 0; i < lnscount; i++) {
 		struct line* ln = lns[i];
 		enum operation op = getop(ln);
-		if(op == pop || op == push) {
-			checkopamnt(ln);
-			mkpoppush(ln, asmlns, &asmi, &sizebet, op);
-		}
+		switchop(ln, &asmlns, &asmi, &sizebet, op);
 	}
 
-	(*asmind) = asmi;
+	(*asmcount) = asmi;
 	return asmlns;
 }
