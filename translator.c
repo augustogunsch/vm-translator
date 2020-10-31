@@ -12,7 +12,7 @@ enum operation getop(struct line* ln) {
 		return push;
 	if(strcmp(tok, "pop") == 0)
 		return pop;
-	fprintf(stderr, "Invalid operation '%s'; line %i", tok, ln->truen);
+	fprintf(stderr, "Invalid operation '%s'; line %i\n", tok, ln->truen);
 	exit(1);
 }
 
@@ -118,9 +118,44 @@ void startpoppush(struct line* ln, struct asmln*** asmlns, int* asmind) {
 	(*asmind) = asmi;
 }
 
+void pushcons(struct line* ln, struct asmln*** asmlns, int* asmind, int* asmsize) {
+	int asmi = *asmind;
+	int totalinstrs = 8;
+
+	checkasmsize(asmsize, asmlns, sizeof(struct asmln*)*(asmi+totalinstrs));
+
+	// // operation segment i
+	int indlen = strlen(ln->tokens[2]);
+	(*asmlns)[asmi] = mkasmln(ln, mkcom(ln, indlen));
+	asmi++;
+
+	// @i
+	checkind(ln, indlen);
+	(*asmlns)[asmi] = mkasmln(ln, mkind(ln->tokens[2], indlen));
+	asmi++;
+
+	const int instcount = 6;
+	const char* instrs[] = { 
+		"D=A",
+		"@SP",
+		"A=M",
+		"M=D",
+		"@SP",
+		"M=M+1"
+	};
+
+	for(int i = 0; i < instcount; i++) {
+		(*asmlns)[asmi] = mkasmln(ln, heapstr(instrs[i]));
+		asmi++;
+	}
+	
+	(*asmind) = asmi;
+}
+
 void mkpush(struct line* ln, struct asmln*** asmlns, int* asmind, int* asmsize) {
 	int asmi = *asmind;
 	int totalinstrs = 11;
+
 	checkasmsize(asmsize, asmlns, sizeof(struct asmln*)*(asmi+totalinstrs));
 
 	startpoppush(ln, asmlns, &asmi);
@@ -175,7 +210,10 @@ void mkpop(struct line* ln, struct asmln*** asmlns, int* asmind, int* asmsize) {
 
 void switchop(struct line* ln, struct asmln*** asmlns, int* asmind, int* asmsize, enum operation op) {
 	if(op == push)
-		mkpush(ln, asmlns, asmind, asmsize);
+		if(strcmp(ln->tokens[1], "constant") == 0)
+			pushcons(ln, asmlns, asmind, asmsize);
+		else
+			mkpush(ln, asmlns, asmind, asmsize);
 	else if(op == pop)
 		mkpop(ln, asmlns, asmind, asmsize);
 }
