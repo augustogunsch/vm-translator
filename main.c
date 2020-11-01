@@ -29,6 +29,17 @@ char* verfname(char* fname) {
 	exit(1);
 }
 
+char* getoutname(char* fname) {
+	int len = strlen(fname);
+	int sz = sizeof(char)*(len+2);
+	char* outname = (char*)malloc(sz);
+	strcpy(outname, fname);
+	int ind = len-2;
+	char* ext = sizeof(char)*ind+outname;
+	snprintf(ext, 4, "asm");
+	return outname;
+}
+
 int main(int argc, char* argv[]) {
 	if(argc < 2) {
 		fprintf(stderr, "Usage: %s {file}\n", argv[0]);
@@ -52,12 +63,17 @@ int main(int argc, char* argv[]) {
 	struct Translator* t = mktranslator(p->lns, fname);
 	translate(t);
 	freeparser(p);
-	
-	// printing
-	printasmlns(t);
-
-	// freeing asmlns
 	free(fname);
+	
+	// output
+	char* outname = getoutname(argv[1]);
+	
+	FILE* output = fopen(outname, "w");
+	printasmlns(t, output);
+	fclose(output);
+
+	// freeing rest
+	free(outname);
 	freetranslator(t);
 
 	return 0;

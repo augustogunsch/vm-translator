@@ -39,9 +39,9 @@ void freetranslator(struct Translator* t) {
 	free(t);
 }
 
-void printasmlns(struct Translator* t) {
+void printasmlns(struct Translator* t, FILE* stream) {
 	for(int i = 0; i < t->asmind; i++)
-		printf("%s\n", t->asmlns[i]->instr);
+		fprintf(stream, "%s\n", t->asmlns[i]->instr);
 }
 
 char* heapstr(struct Translator* t, const char* input) {

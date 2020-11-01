@@ -20,7 +20,7 @@ struct Translator {
 };
 
 void freetranslator(struct Translator* t);
-void printasmlns(struct Translator* t);
+void printasmlns(struct Translator* t, FILE* stream);
 void translate(struct Translator* t);
 struct Translator* mktranslator(struct lnarray* lns, char* fname);
 #endif
