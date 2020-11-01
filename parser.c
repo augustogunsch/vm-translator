@@ -4,16 +4,22 @@
 #include <string.h>
 #include "parser.h"
 
-void freelns(struct line** lns, int lnscount) {
-	for(int i = 0; i < lnscount; i++) {
-		int tkcount = lns[i]->tokenscount;
+void freelns(struct lnarray* lns) {
+	for(int i = 0; i < lns->count; i++) {
+		int tkcount = lns->lns[i]->tokenscount;
 		for(int j = 0; j < tkcount; j++) {
-			free(lns[i]->tokens[j]);
+			free(lns->lns[i]->tokens[j]);
 		}
-		free(lns[i]->tokens);
-		free(lns[i]);
+		free(lns->lns[i]->tokens);
+		free(lns->lns[i]);
 	}
+	free(lns->lns);
 	free(lns);
+}
+
+void freeparser(struct Parser* p) {
+	freelns(p->lns);
+	free(p);
 }
 
 void gountilbrk (FILE* input) {
@@ -26,15 +32,16 @@ void gountilbrk (FILE* input) {
 	}
 }
 
-void getinfo(FILE* input, int* lncount, int* widestln, int* maxtokens) {
+void getinfo(struct Parser* p) {
+	p->lns->count = 0;
+	p->maxtokens = 0;
+	p->widestln = 0;
 	char c, nc;
-	int lns = 0;
 	int widest = 0;
 	int currsz = 0;
 	int tokens = 0;
-	int maxtoks = 0;
 	short readsmt = 0;
-	while(c = fgetc(input), c != -1) {
+	while(c = fgetc(p->input), c != -1) {
 		currsz++;
 		if(isspace(c)) {
 			if(readsmt) {
@@ -42,11 +49,11 @@ void getinfo(FILE* input, int* lncount, int* widestln, int* maxtokens) {
 				readsmt = 0;
 			}
 			if(c == '\n' && tokens > 0) {
-				lns++;
-				if(currsz > widest)
-					widest = currsz;
-				if(tokens > maxtoks)
-					maxtoks = tokens;
+				p->lns->count++;
+				if(currsz > p->widestln)
+					p->widestln = currsz;
+				if(tokens > p->maxtokens)
+					p->maxtokens = tokens;
 				currsz = 0;
 				tokens = 0;
 			}
@@ -54,33 +61,43 @@ void getinfo(FILE* input, int* lncount, int* widestln, int* maxtokens) {
 		}
 
 		if(c == '/') {
-			nc = fgetc(input);
+			nc = fgetc(p->input);
 			if(nc == '/') {
-				gountilbrk(input);
+				gountilbrk(p->input);
 				continue;
 			}
-			ungetc(nc, input);
+			ungetc(nc, p->input);
 		}
 
 		readsmt = 1;
 	}
-	rewind(input);
-	(*lncount) = lns;
-	(*widestln) = widest;
-	(*maxtokens) = maxtoks;
+	rewind(p->input);
 }
 
-struct line** parse(FILE* input, int lncount, int widestln, int maxtokens) {
-	struct line** lns = (struct line**)malloc(sizeof(struct line*)*lncount);
+struct Parser* mkparser(FILE* input) {
+	struct Parser* p = (struct Parser*)malloc(sizeof(struct Parser));
+	struct lnarray* lns = (struct lnarray*)malloc(sizeof(struct lnarray));
+	p->input = input;
+	p->lns = lns;
+	getinfo(p);
+	return p;
+}
+
+void parse(struct Parser* p) {
+	struct line** lns = (struct line**)malloc(sizeof(struct line*)*p->lns->count);
+	p->lns->lns = lns;
+	p->lns->count = 0;
+
+	char tmp[p->widestln];
+	char* tokens[p->maxtokens];
+
 	char c, nc;
 	short readsmt = 0;
-	char tmp[widestln];
-	char* tokens[maxtokens];
 	int tmpind = 0;
-	int lnsind = 0;
 	int tokensind = 0;
 	int truelncount = 0;
-	while(c = fgetc(input), c != -1) {
+
+	while(c = fgetc(p->input), c != -1) {
 		if(isspace(c)) {
 			if(readsmt) {
 				tmp[tmpind] = '\0';
@@ -101,8 +118,8 @@ struct line** parse(FILE* input, int lncount, int widestln, int maxtokens) {
 					}
 					newln->tokenscount = tokensind;
 					newln->truen = truelncount;
-					lns[lnsind] = newln;
-					lnsind++;
+					lns[p->lns->count] = newln;
+					p->lns->count++;
 					tokensind = 0;
 				}
 			}
@@ -110,17 +127,17 @@ struct line** parse(FILE* input, int lncount, int widestln, int maxtokens) {
 		}
 		
 		if(c == '/') {
-			nc = fgetc(input);
+			nc = fgetc(p->input);
 			if(nc == '/') {
-				gountilbrk(input);
+				gountilbrk(p->input);
 				continue;
 			}
-			ungetc(nc, input);
+			ungetc(nc, p->input);
 		}
 		
 		tmp[tmpind] = c;
 		tmpind++;
 		readsmt = 1;
 	}
-	return lns;
+	fclose(p->input);
 }

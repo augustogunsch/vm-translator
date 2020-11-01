@@ -44,26 +44,21 @@ int main(int argc, char* argv[]) {
 		return errno;
 	}
 
-	// info gathering
-	int lncount, widestln, maxtokens;
-	getinfo(input, &lncount, &widestln, &maxtokens);
-
 	// parsing
-	struct line** lns = parse(input, lncount, widestln, maxtokens);
-	fclose(input);
+	struct Parser* p = mkparser(input);
+	parse(p);
 
 	// translating
-	translate(lns, lncount, fname);
-
-	// freeing lns
-	freelns(lns, lncount);
+	struct Translator* t = mktranslator(p->lns, fname);
+	translate(t);
+	freeparser(p);
 	
 	// printing
-	printasmlns();
+	printasmlns(t);
 
 	// freeing asmlns
 	free(fname);
-	freeasmlns();
+	freetranslator(t);
 
 	return 0;
 }

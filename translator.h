@@ -7,7 +7,19 @@ struct asmln {
 	int truen;
 };
 
-void freeasmlns();
-void printasmlns();
-void translate(struct line** lns, int lnscount, char* fname);
+struct Translator {
+	struct asmln** asmlns;
+	int asmind;
+	int asmsize;
+	char** toclean;
+	int tocleansize;
+	int tocleanind;
+	struct lnarray* lns;
+	char* fname;
+};
+
+void freetranslator(struct Translator* t);
+void printasmlns(struct Translator* t);
+void translate(struct Translator* t);
+struct Translator* mktranslator(struct lnarray* lns, char* fname);
 #endif

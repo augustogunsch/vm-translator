@@ -6,7 +6,19 @@ struct line {
 	int truen;
 };
 
-void getinfo(FILE* input, int* lncount, int* widestln, int* maxtokens);
-void freelns(struct line** lns, int lnscount);
-struct line** parse(FILE* input, int lncount, int widestln, int maxtokens);
+struct lnarray {
+	struct line** lns;
+	int count;
+};
+
+struct Parser {
+	FILE* input;
+	struct lnarray* lns;
+	int widestln;
+	int maxtokens;
+};
+
+struct Parser* mkparser(FILE* input);
+void freeparser(struct Parser* p);
+void parse(struct Parser* p);
 #endif
