@@ -4,6 +4,8 @@
 #include <ctype.h>
 #include "translator.h"
 #include "templates.h"
+#define CMPLIMIT 1000
+#define CMPLEN 4
 
 void pushtoclean(struct Translator* t, char* topush) {
 	int nextsz = sizeof(char*)*(t->tocleanind+1);
@@ -105,11 +107,40 @@ void checkind(struct line* ln, int indlen) {
 		}
 }
 
+char* mkcmplab(struct Translator* t, struct line* ln) {
+	t->compcount++;
+	if(t->compcount > CMPLIMIT) {
+		fprintf(stderr, "Reached comparison limit (%i); line %i\n", CMPLIMIT, ln->truen);
+		exit(1);
+	}
+	int newsz = (CMPLEN+13)*sizeof(char);
+	char* label = (char*)malloc(newsz);
+	snprintf(label, newsz, "COMPARISON-%i", t->compcount);
+	pushtoclean(t, label);
+	return label;
+}
+
 char* mkind(struct Translator* t, struct line* ln, int indlen) {
 	checkind(ln, indlen);
 	int newsz = sizeof(char) * (indlen + 2);
 	char* newind = (char*)malloc(newsz);
 	snprintf(newind, newsz, "@%s", ln->tokens[2]);
+	pushtoclean(t, newind);
+	return newind;
+}
+
+char* atlab(struct Translator* t, char* label, int labellen) {
+	int newsz = sizeof(char) * (labellen + 2);
+	char* newind = (char*)malloc(newsz);
+	snprintf(newind, newsz, "@%s", label);
+	pushtoclean(t, newind);
+	return newind;
+}
+
+char* mklab(struct Translator* t, char* label, int labellen) {
+	int newsz = sizeof(char) * (labellen + 3);
+	char* newind = (char*)malloc(newsz);
+	snprintf(newind, newsz, "(%s)", label);
 	pushtoclean(t, newind);
 	return newind;
 }
@@ -275,6 +306,32 @@ void pop(struct Translator* t, struct line* ln, int indlen) {
 	addasmlns(t, ln, tpop, TPOPN);
 }
 
+void arith(struct Translator* t, struct line* ln, char* op) {
+	tarith[TARITHN-1] = heapstr(t, op);
+
+	addasmlns(t, ln, tarith, TARITHN);
+}
+
+void comp(struct Translator* t, struct line* ln, char* op) {
+	char* label = mkcmplab(t, ln);
+	int labellen = strlen(label);
+
+	// @label
+	tcomp[TCOMPN-6] = atlab(t, label, labellen);
+	
+	// D;J(op)
+	int opsz = sizeof(char)*6;
+	char* trueop = (char*)malloc(opsz);
+	snprintf(trueop, opsz, "D;J%s", op);
+	tcomp[TCOMPN-5] = trueop;
+
+	// (label)
+	tcomp[TCOMPN-1] = mklab(t, label, labellen);
+	free(label);
+
+	addasmlns(t, ln, tcomp, TCOMPN);
+};
+
 void switchpush(struct Translator* t, struct line* ln) {
 	checkopamnt(3, ln);
 	char* seg = ln->tokens[1];
@@ -314,6 +371,24 @@ void switchop(struct Translator* t, struct line* ln) {
 		switchpush(t, ln);
 	else if(!strcmp(op, "pop"))
 		switchpop(t, ln);
+	else if(!strcmp(op, "add"))
+		arith(t, ln, "M=M+D");
+	else if(!strcmp(op, "sub"))
+		arith(t, ln, "M=M-D");
+	else if(!strcmp(op, "neg"))
+		addasmlns(t, ln, tneg, TNEGN);
+	else if(!strcmp(op, "eq"))
+		comp(t, ln, "EQ");
+	else if(!strcmp(op, "gt"))
+		comp(t, ln, "GT");
+	else if(!strcmp(op, "lt"))
+		comp(t, ln, "LT");
+	else if(!strcmp(op, "and"))
+		arith(t, ln, "M=M&D");
+	else if(!strcmp(op, "or"))
+		arith(t, ln, "M=M|D");
+	else if(!strcmp(op, "not"))
+		addasmlns(t, ln, tnot, TNOTN);
 	else {
 		fprintf(stderr, "Unrecognized operation '%s'; line %i\n", op, ln->truen);
 		exit(1);

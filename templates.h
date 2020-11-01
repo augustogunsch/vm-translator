@@ -94,4 +94,51 @@ char* tpoppointer[TPOPPOINTERN] = {
 	"M=D"
 };
 
+#define TARITHN 7
+char* tarith[TARITHN] = {
+	"",
+	"@SP",
+	"M=M-1",
+	"A=M",
+	"D=M",
+	"A=A-1",
+	""
+};
+
+#define TNEGN 5
+char* tneg[TNEGN] = {
+	"",
+	"@SP",
+	"M=M-1",
+	"A=M",
+	"M=-M",
+};
+
+#define TNOTN 5
+char* tnot[TNOTN] = {
+	"",
+	"@SP",
+	"M=M-1",
+	"A=M",
+	"M=!M",
+};
+
+#define TCOMPN 15
+char* tcomp[TCOMPN] = {
+	"",
+	"M=D",
+	"@SP",
+	"M=M-1",
+	"A=M",
+	"D=M",
+	"A=A-1",
+	"D=D-M",
+	"M=1",
+	"",
+	"",
+	"@SP",
+	"A=M-1",
+	"M=0",
+	""
+};
 #endif

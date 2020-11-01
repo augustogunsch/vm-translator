@@ -16,6 +16,7 @@ struct Translator {
 	int tocleanind;
 	struct lnarray* lns;
 	char* fname;
+	int compcount;
 };
 
 void freetranslator(struct Translator* t);
