@@ -404,6 +404,7 @@ struct Translator* mktranslator(struct lnarray* lns, char* fname) {
 	struct Translator* t = (struct Translator*)malloc(sizeof(struct Translator));
 	t->asmsize = sizeof(struct asmln*)*(lns->count * 15);
 	t->asmind = 0;
+	t->compcount = 0;
 	t->asmlns = (struct asmln**)malloc(t->asmsize);
 
 	t->tocleanind = 0;
