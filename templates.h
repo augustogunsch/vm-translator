@@ -1,7 +1,7 @@
 #ifndef templates
 #define templates
 
-#define TPUSHN 11
+#define TPUSHN 10
 char* tpush[TPUSHN] = {
 	"",
 	"",
@@ -10,47 +10,38 @@ char* tpush[TPUSHN] = {
 	"A=D+A",
 	"D=M",
 	"@SP",
-	"A=M",
-	"M=D",
-	"@SP",
-	"M=M+1"
+	"M=M+1",
+	"A=M-1",
+	"M=D"
 };
 
-#define TPUSHCONSN 8
+#define TPUSHCONSN 7
 char* tpushcons[TPUSHCONSN] = {
 	"",
 	"",
 	"D=A",
 	"@SP",
-	"A=M",
-	"M=D",
-	"@SP",
-	"M=M+1"
+	"M=M+1",
+	"A=M-1",
+	"M=D"
 };
 
-#define TPUSHSTATN 8
+#define TPUSHSTATN 7
 char* tpushstat[TPUSHSTATN] = {
 	"",
 	"",
 	"D=M",
 	"@SP",
-	"A=M",
-	"M=D",
-	"@SP",
-	"M=M+1"
+	"M=M+1",
+	"A=M-1",
+	"M=D"
 };
 
-#define TPUSHTEMP 8
-char* tpushtemp[TPUSHTEMP] = {
-	"",
-	"",
-	"D=M",
-	"@SP",
-	"A=M",
-	"M=D",
-	"@SP",
-	"M=M+1"
-};
+#define TPUSHTEMPN TPUSHSTATN
+char** tpushtemp = tpushstat;
+
+#define TPUSHPOINTERN TPUSHSTATN
+char** tpushpointer = tpushstat;
 
 #define TPOPN 14
 char* tpop[TPOPN] = {
@@ -70,13 +61,12 @@ char* tpop[TPOPN] = {
 	"M=D"
 };
 
-#define TPOPSTATN 8
+#define TPOPSTATN 7
 char* tpopstat[TPOPSTATN] = {
 	"",
 	"@SP",
-	"D=M",
 	"M=M-1",
-	"A=D",
+	"A=M+1",
 	"D=M",
 	"",
 	""
@@ -91,6 +81,17 @@ char* tpoptemp[TPOPTEMPN] = {
 	"D=M",
 	"",
 	""
+};
+
+#define TPOPPOINTERN 7
+char* tpoppointer[TPOPPOINTERN] = {
+	"",
+	"@SP",
+	"M=M-1",
+	"A=M",
+	"D=M",
+	"",
+	"M=D"
 };
 
 #endif

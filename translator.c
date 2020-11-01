@@ -51,58 +51,109 @@ char* heapstr(struct Translator* t, const char* input) {
 
 char* switchseg(struct Translator* t, struct line* ln) {
 	char* seg = ln->tokens[1];
-	if(strcmp(seg, "local") == 0)
+	if(!strcmp(seg, "local"))
 		return heapstr(t, "@LCL");
-	if(strcmp(seg, "argument") == 0)
+	if(!strcmp(seg, "argument"))
 		return heapstr(t, "@ARG");
-	if(strcmp(seg, "this") == 0)
+	if(!strcmp(seg, "this"))
 		return heapstr(t, "@THIS");
-	if(strcmp(seg, "that") == 0)
+	if(!strcmp(seg, "that"))
 		return heapstr(t, "@THAT");
 	fprintf(stderr, "Unrecognized segment '%s'; line %i\n", seg, ln->truen);
 	exit(1);
 }
 
+int lnlen(int* out, struct line* ln) {
+	int len = 0;
+	for(int i = 0; i < ln->tokenscount; i++) {
+		int l = strlen(ln->tokens[i]);
+		out[i] = l;
+		len += l;
+	}
+	return len;
+}
+
 // produce comment as follows:
 // pop/push segment i
-char* mkcom(struct Translator* t, struct line* ln, int indlen) {
-	int comlen = sizeof(char) * (strlen(ln->tokens[0]) + strlen(ln->tokens[1]) + indlen + 6);
+char* mkcom(struct Translator* t, struct line* ln) {
+	int lens[ln->tokenscount];
+	int comlen = sizeof(char) * lnlen(lens, ln) + ln->tokenscount + 3;
 	char* comment = (char*)malloc(comlen);
-	snprintf(comment, comlen, "// %s %s %s", ln->tokens[0], ln->tokens[1], ln->tokens[2]);
+
+	comment[0] = '/';
+	comment[1] = '/';
+
+	char* tmp = comment + sizeof(char)*2;
+	for(int i = 0; i < ln->tokenscount; i++) {
+		tmp[0] = ' ';
+		tmp += sizeof(char);
+		strcpy(tmp, ln->tokens[i]);
+		tmp += sizeof(char)*lens[i];
+	}
+
+	tmp[0] = '\0';
+
 	pushtoclean(t, comment);
 	return comment;
 }
 
-void checkind(struct line* ln, int indsz) {
-	for(int i = 0; i < indsz; i++)
+void checkind(struct line* ln, int indlen) {
+	for(int i = 0; i < indlen; i++)
 		if(!isdigit(ln->tokens[2][i])) {
 			fprintf(stderr, "Invalid index '%s'; line %i\n", ln->tokens[2], ln->truen);
 			exit(1);
 		}
 }
 
-char* mkind(struct Translator* t, struct line* ln, int indsz) {
-	int newsz = sizeof(char) * (indsz + 2);
+char* mkind(struct Translator* t, struct line* ln, int indlen) {
+	checkind(ln, indlen);
+	int newsz = sizeof(char) * (indlen + 2);
 	char* newind = (char*)malloc(newsz);
 	snprintf(newind, newsz, "@%s", ln->tokens[2]);
 	pushtoclean(t, newind);
 	return newind;
 }
 
-char* mkstatind(struct Translator* t, struct line* ln, int indsz) {
+char* mkstatind(struct Translator* t, struct line* ln, int indlen) {
+	checkind(ln, indlen);
 	int fnamelen = strlen(t->fname);
-	int newsz = sizeof(char) * (fnamelen + indsz + 3);
+	int newsz = sizeof(char) * (fnamelen + indlen + 3);
 	char* newind = (char*)malloc(newsz);
 	snprintf(newind, newsz, "@%s.%s", t->fname, ln->tokens[2]);
 	pushtoclean(t, newind);
 	return newind;
 }
 
-char* mktempind(struct Translator* t, struct line* ln, int indsz) {
+char* mktempind(struct Translator* t, struct line* ln, int indlen) {
+	checkind(ln, indlen);
 	int intind = atoi(ln->tokens[2]);
-	int newsz = sizeof(char) * (indsz + 3);
+	int newsz = sizeof(char) * (indlen + 3);
 	char* newind = (char*)malloc(newsz);
 	snprintf(newind, newsz, "@%i", intind+5);
+	pushtoclean(t, newind);
+	return newind;
+}
+
+char* mkpointerind(struct Translator* t, struct line* ln, int indlen) {
+	if(indlen > 1) {
+		fprintf(stderr, "Invalid index '%s'; line %i\n", ln->tokens[2], ln->truen);
+		exit(1);
+	}
+	char* ptr;
+	switch(ln->tokens[2][0]) {
+		case '0':
+			ptr = "THIS";
+			break;
+		case '1':
+			ptr = "THAT";
+			break;
+		default:
+			fprintf(stderr, "Invalid index '%s'; line %i\n", ln->tokens[2], ln->truen);
+			exit(1);
+	}
+	int newsz = sizeof(char) * 6;
+	char* newind = (char*)malloc(newsz);
+	snprintf(newind, newsz, "@%s", ptr);
 	pushtoclean(t, newind);
 	return newind;
 }
@@ -135,6 +186,11 @@ void checkopamnt(int amnt, struct line* ln) {
 }
 
 void addasmlns(struct Translator* t, struct line* ln, char** insts, int instcount) {
+	checkasmsize(t, instcount);
+
+	// instruction comment
+	insts[0] = mkcom(t, ln);
+
 	for(int i = 0; i < instcount; i++) {
 		t->asmlns[t->asmind] = mkasmln(ln, insts[i]);
 		t->asmind++;
@@ -142,9 +198,6 @@ void addasmlns(struct Translator* t, struct line* ln, char** insts, int instcoun
 }
 
 void startpoppush(struct Translator* t, struct line* ln, int indlen, char** insts) {
-	// // operation segment i
-	insts[0] = mkcom(t, ln, indlen);
-	
 	// @segment
 	insts[1] = switchseg(t, ln);
 	
@@ -152,130 +205,118 @@ void startpoppush(struct Translator* t, struct line* ln, int indlen, char** inst
 	insts[2] = heapstr(t, "D=M");
 
 	// @i
-	checkind(ln, indlen);
 	insts[3] = mkind(t, ln, indlen);
 }
 
 void pushcons(struct Translator* t, struct line* ln, int indlen) {
-	checkasmsize(t, TPUSHCONSN);
-
-	// // push constant i
-	tpushcons[0] = mkcom(t, ln, indlen);
-
 	// @i
-	checkind(ln, indlen);
 	tpushcons[1] = mkind(t, ln, indlen);
 
 	addasmlns(t, ln, tpushcons, TPUSHCONSN);
 }
 
 void pushstat(struct Translator* t, struct line* ln, int indlen) {
-	checkasmsize(t, TPUSHSTATN);
-
-	// // push static i
-	tpushstat[0] =  mkcom(t, ln, indlen);
-
 	// @fname.i
-	checkind(ln, indlen);
 	tpushstat[1] = mkstatind(t, ln, indlen);
 
 	addasmlns(t, ln, tpushstat, TPUSHSTATN);
 }
 
 void pushtemp(struct Translator* t, struct line* ln, int indlen) {
-	checkasmsize(t, TPUSHSTATN);
-
-	// // pop static i
-	tpushtemp[0] = mkcom(t, ln, indlen);
-	
 	// @5+i
-	checkind(ln, indlen);
 	tpushtemp[1] = mktempind(t, ln, indlen);
 
-	addasmlns(t, ln, tpushtemp, TPUSHTEMP);
+	addasmlns(t, ln, tpushtemp, TPUSHTEMPN);
+}
+
+void pushpointer(struct Translator* t, struct line* ln, int indlen) {
+	// @THIS/@THAT
+	tpushpointer[1] = mkpointerind(t, ln, indlen);
+
+	addasmlns(t, ln, tpushpointer, TPUSHPOINTERN);
 }
 
 void push(struct Translator* t, struct line* ln, int indlen) {
-	checkasmsize(t, TPUSHN);
-
 	startpoppush(t, ln, indlen, tpush);
 
 	addasmlns(t, ln, tpush, TPUSHN);
 }
 
 void popstat(struct Translator* t, struct line* ln, int indlen) {
-	checkasmsize(t, TPOPSTATN);
-
-	// // pop static i
-	tpopstat[0] = mkcom(t, ln, indlen);
-
 	// @fname.i
-	checkind(ln, indlen);
-	tpopstat[6] = mkstatind(t, ln, indlen);
+	tpopstat[TPOPSTATN-2] = mkstatind(t, ln, indlen);
 
 	// M=D
-	tpopstat[7] = heapstr(t, "M=D");
+	tpopstat[TPOPSTATN-1] = heapstr(t, "M=D");
 
 	addasmlns(t, ln, tpopstat, TPOPSTATN);
 }
 
 void poptemp(struct Translator* t, struct line* ln, int indlen) {
-	checkasmsize(t, TPOPTEMPN);
-
-	// // pop static i
-	tpoptemp[0] = mkcom(t, ln, indlen);
-	
 	// @5+i
-	checkind(ln, indlen);
-	tpoptemp[5] = mktempind(t, ln, indlen);
+	tpoptemp[TPOPTEMPN-2] = mktempind(t, ln, indlen);
 
 	// M=D
-	tpoptemp[6] = heapstr(t, "M=D");
+	tpoptemp[TPOPTEMPN-1] = heapstr(t, "M=D");
 
 	addasmlns(t, ln, tpoptemp, TPOPTEMPN);
 }
 
-void pop(struct Translator* t, struct line* ln, int indlen) {
-	checkasmsize(t, TPOPN);
+void poppointer(struct Translator* t, struct line* ln, int indlen) {
+	// @THIS/@THAT
+	tpoppointer[TPOPPOINTERN-2] = mkpointerind(t, ln, indlen);
 
+	addasmlns(t, ln, tpoppointer, TPOPPOINTERN);
+}
+
+void pop(struct Translator* t, struct line* ln, int indlen) {
 	startpoppush(t, ln, indlen, tpop);
 
 	addasmlns(t, ln, tpop, TPOPN);
 }
 
+void switchpush(struct Translator* t, struct line* ln) {
+	checkopamnt(3, ln);
+	char* seg = ln->tokens[1];
+	int indlen = strlen(ln->tokens[2]);
+
+	if(!strcmp(seg, "constant"))
+		pushcons(t, ln, indlen);
+	else if(!strcmp(seg, "static"))
+		pushstat(t, ln, indlen);
+	else if(!strcmp(seg, "temp"))
+		pushtemp(t, ln, indlen);
+	else if(!strcmp(seg, "pointer"))
+		pushpointer(t, ln, indlen);
+	else
+		push(t, ln, indlen);
+}
+
+void switchpop(struct Translator* t, struct line* ln) {
+	checkopamnt(3, ln);
+	char* seg = ln->tokens[1];
+	int indlen = strlen(ln->tokens[2]);
+
+	if(!strcmp(seg, "static"))
+		popstat(t, ln, indlen);
+	else if(!strcmp(seg, "temp"))
+		poptemp(t, ln, indlen);
+	else if(!strcmp(seg, "pointer"))
+		poppointer(t, ln, indlen);
+	else
+		pop(t, ln, indlen);
+}
+
 void switchop(struct Translator* t, struct line* ln) {
 	char* op = ln->tokens[0];
 
-	if(strcmp(op, "push") == 0) {
-		checkopamnt(3, ln);
-		char* seg = ln->tokens[1];
-		int indlen = strlen(ln->tokens[2]);
-
-		if(strcmp(seg, "constant") == 0)
-			pushcons(t, ln, indlen);
-
-		else if(strcmp(seg, "static") == 0)
-			pushstat(t, ln, indlen);
-
-		else if(strcmp(seg, "temp") == 0)
-			pushtemp(t, ln, indlen);
-
-		else
-			push(t, ln, indlen);
-	}
-	else if(strcmp(op, "pop") == 0) {
-		checkopamnt(3, ln);
-		char* seg = ln->tokens[1];
-		int indlen = strlen(ln->tokens[2]);
-
-		if(strcmp(seg, "static") == 0)
-			popstat(t, ln, indlen);
-
-		else if(strcmp(seg, "temp") == 0)
-			poptemp(t, ln, indlen);
-
-		else
-			pop(t, ln, indlen);
+	if(!strcmp(op, "push"))
+		switchpush(t, ln);
+	else if(!strcmp(op, "pop"))
+		switchpop(t, ln);
+	else {
+		fprintf(stderr, "Unrecognized operation '%s'; line %i\n", op, ln->truen);
+		exit(1);
 	}
 }
 
