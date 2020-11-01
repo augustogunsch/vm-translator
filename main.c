@@ -53,20 +53,17 @@ int main(int argc, char* argv[]) {
 	fclose(input);
 
 	// translating
-	int asmcount = 0;
-	struct asmln** asmlns = translate(lns, lncount, &asmcount, fname);
+	translate(lns, lncount, fname);
 
 	// freeing lns
 	freelns(lns, lncount);
 	
 	// printing
-	for(int i = 0; i < asmcount; i++) {
-		printf("%s\n", asmlns[i]->instr);
-	}
+	printasmlns();
 
 	// freeing asmlns
 	free(fname);
-	freeasmlns(asmlns, asmcount);
+	freeasmlns();
 
 	return 0;
 }
