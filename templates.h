@@ -66,33 +66,17 @@ char* tpopstat[TPOPSTATN] = {
 	"",
 	"@SP",
 	"M=M-1",
-	"A=M+1",
-	"D=M",
-	"",
-	""
-};
-
-#define TPOPTEMPN 7
-char* tpoptemp[TPOPTEMPN] = {
-	"",
-	"@SP",
-	"M=M-1",
 	"A=M",
 	"D=M",
 	"",
 	""
 };
 
-#define TPOPPOINTERN 7
-char* tpoppointer[TPOPPOINTERN] = {
-	"",
-	"@SP",
-	"M=M-1",
-	"A=M",
-	"D=M",
-	"",
-	"M=D"
-};
+#define TPOPTEMPN TPOPSTATN
+char** tpoptemp = tpopstat;
+
+#define TPOPPOINTERN TPOPSTATN
+char** tpoppointer = tpopstat;
 
 #define TARITHN 7
 char* tarith[TARITHN] = {
@@ -131,7 +115,7 @@ char* tcomp[TCOMPN] = {
 	"D=M",
 	"A=A-1",
 	"D=D-M",
-	"M=1",
+	"M=-1",
 	"",
 	"",
 	"@SP",

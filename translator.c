@@ -297,6 +297,9 @@ void poppointer(struct Translator* t, struct line* ln, int indlen) {
 	// @THIS/@THAT
 	tpoppointer[TPOPPOINTERN-2] = mkpointerind(t, ln, indlen);
 
+	// M=D
+	tpoppointer[TPOPPOINTERN-1] = heapstr(t, "M=D");
+
 	addasmlns(t, ln, tpoppointer, TPOPPOINTERN);
 }
 
@@ -380,9 +383,9 @@ void switchop(struct Translator* t, struct line* ln) {
 	else if(!strcmp(op, "eq"))
 		comp(t, ln, "EQ");
 	else if(!strcmp(op, "gt"))
-		comp(t, ln, "GT");
-	else if(!strcmp(op, "lt"))
 		comp(t, ln, "LT");
+	else if(!strcmp(op, "lt"))
+		comp(t, ln, "GT");
 	else if(!strcmp(op, "and"))
 		arith(t, ln, "M=M&D");
 	else if(!strcmp(op, "or"))
