@@ -4,7 +4,7 @@
 #include <ctype.h>
 #include "translator.h"
 #include "templates.h"
-#define CMPLIMIT 1000
+#define CMPLIMIT 9999
 #define CMPLEN 4
 
 void pushtoclean(struct Translator* t, char* topush) {
@@ -113,9 +113,9 @@ char* mkcmplab(struct Translator* t, struct line* ln) {
 		fprintf(stderr, "Reached comparison limit (%i); line %i\n", CMPLIMIT, ln->truen);
 		exit(1);
 	}
-	int newsz = (CMPLEN+13)*sizeof(char);
+	int newsz = (t->fnamelen + CMPLEN + 6) * sizeof(char);
 	char* label = (char*)malloc(newsz);
-	snprintf(label, newsz, "COMPARISON-%i", t->compcount);
+	snprintf(label, newsz, "%s-CMP-%i", t->fname, t->compcount);
 	pushtoclean(t, label);
 	return label;
 }
@@ -147,8 +147,7 @@ char* mklab(struct Translator* t, char* label, int labellen) {
 
 char* mkstatind(struct Translator* t, struct line* ln, int indlen) {
 	checkind(ln, indlen);
-	int fnamelen = strlen(t->fname);
-	int newsz = sizeof(char) * (fnamelen + indlen + 3);
+	int newsz = sizeof(char) * (t->fnamelen + indlen + 3);
 	char* newind = (char*)malloc(newsz);
 	snprintf(newind, newsz, "@%s.%s", t->fname, ln->tokens[2]);
 	pushtoclean(t, newind);
@@ -327,13 +326,49 @@ void comp(struct Translator* t, struct line* ln, char* op) {
 	char* trueop = (char*)malloc(opsz);
 	snprintf(trueop, opsz, "D;J%s", op);
 	tcomp[TCOMPN-5] = trueop;
+	pushtoclean(t, trueop);
 
 	// (label)
 	tcomp[TCOMPN-1] = mklab(t, label, labellen);
-	free(label);
 
 	addasmlns(t, ln, tcomp, TCOMPN);
 };
+
+void label(struct Translator* t, struct line* ln) {
+	if(ln->tokenscount < 2) {
+		fprintf(stderr, "Expected label; line %i", ln->truen);
+		exit(1);
+	}
+	
+	// (label)
+	tlabel[TLABELN-1] = mklab(t, ln->tokens[1], strlen(ln->tokens[1]));
+
+	addasmlns(t, ln, tlabel, TLABELN);
+}
+
+void mygoto(struct Translator* t, struct line* ln) {
+	if(ln->tokenscount < 2) {
+		fprintf(stderr, "Expected label; line %i", ln->truen);
+		exit(1);
+	}
+
+	// @label
+	tgoto[TGOTON-2] = atlab(t, ln->tokens[1], strlen(ln->tokens[1]));
+
+	addasmlns(t, ln, tgoto, TGOTON);
+}
+
+void ifgoto(struct Translator* t, struct line* ln) {
+	if(ln->tokenscount < 2) {
+		fprintf(stderr, "Expected label; line %i", ln->truen);
+		exit(1);
+	}
+	
+	// @label
+	tifgoto[TIFGOTON-2] = atlab(t, ln->tokens[1], strlen(ln->tokens[1]));
+
+	addasmlns(t, ln, tifgoto, TIFGOTON);
+}
 
 void switchpush(struct Translator* t, struct line* ln) {
 	checkopamnt(3, ln);
@@ -375,7 +410,7 @@ void switchop(struct Translator* t, struct line* ln) {
 	else if(!strcmp(op, "pop"))
 		switchpop(t, ln);
 	else if(!strcmp(op, "add"))
-		arith(t, ln, "M=M+D");
+		arith(t, ln, "M=D+M");
 	else if(!strcmp(op, "sub"))
 		arith(t, ln, "M=M-D");
 	else if(!strcmp(op, "neg"))
@@ -387,11 +422,17 @@ void switchop(struct Translator* t, struct line* ln) {
 	else if(!strcmp(op, "lt"))
 		comp(t, ln, "GT");
 	else if(!strcmp(op, "and"))
-		arith(t, ln, "M=M&D");
+		arith(t, ln, "M=D&M");
 	else if(!strcmp(op, "or"))
-		arith(t, ln, "M=M|D");
+		arith(t, ln, "M=D|M");
 	else if(!strcmp(op, "not"))
 		addasmlns(t, ln, tnot, TNOTN);
+	else if(!strcmp(op, "label"))
+		label(t, ln);
+	else if(!strcmp(op, "goto"))
+		mygoto(t, ln);
+	else if(!strcmp(op, "if-goto"))
+		ifgoto(t, ln);
 	else {
 		fprintf(stderr, "Unrecognized operation '%s'; line %i\n", op, ln->truen);
 		exit(1);
@@ -416,6 +457,7 @@ struct Translator* mktranslator(struct lnarray* lns, char* fname) {
 
 	t->lns = lns;
 	t->fname = fname;
+	t->fnamelen = strlen(fname);
 
 	return t;
 }

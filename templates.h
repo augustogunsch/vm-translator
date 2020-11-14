@@ -105,10 +105,9 @@ char* tnot[TNOTN] = {
 	"M=!M",
 };
 
-#define TCOMPN 15
+#define TCOMPN 14
 char* tcomp[TCOMPN] = {
 	"",
-	"M=D",
 	"@SP",
 	"M=M-1",
 	"A=M",
@@ -123,4 +122,29 @@ char* tcomp[TCOMPN] = {
 	"M=0",
 	""
 };
+
+#define TLABELN 2
+char* tlabel[TLABELN] = {
+	"",
+	""
+};
+
+#define TGOTON 3
+char* tgoto[TGOTON] = {
+	"",
+	"",
+	"0;JMP"
+};
+
+#define TIFGOTON 7
+char* tifgoto[TIFGOTON] = {
+	"",
+	"@SP",
+	"M=M-1",
+	"A=M",
+	"D=M",
+	"",
+	"D;JNE"
+};
+
 #endif
