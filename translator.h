@@ -2,13 +2,8 @@
 #define translator
 #include "parser.h"
 
-struct asmln {
-	char* instr;
-	int truen;
-};
-
 struct Translator {
-	struct asmln** asmlns;
+	char** asmlns;
 	int asmind;
 	int asmsize;
 	char** toclean;
@@ -17,7 +12,12 @@ struct Translator {
 	struct lnarray* lns;
 	char* fname;
 	int fnamelen;
-	int compcount;
+	char* lastfun;
+	int lastfunlen;
+	int funcount;
+	int retind;
+	int cmpind;
+	short returned;
 };
 
 void freetranslator(struct Translator* t);

@@ -1,4 +1,4 @@
-FILES = parser.c main.c translator.c
+FILES = parser.c main.c translator.c util.c
 INCLUDES = -I.
 CFLAGS = -std=c99 -g
 OUTFILE = vmtranslator
