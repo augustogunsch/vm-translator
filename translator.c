@@ -257,107 +257,107 @@ void checkfun(TRANSLATOR* t, LINE* ln) {
 	}
 }
 
-void addasm(TRANSLATOR* t, char** insts, int instcount) {
-	checkasmsize(t, instcount);
+void addasm(TRANSLATOR* t, TEMPLATE* tp) {
+	checkasmsize(t, tp->count);
 
-	for(int i = 0; i < instcount; i++) {
-		t->asmlns->items[t->asmlns->count] = insts[i];
+	for(int i = 0; i < tp->count; i++) {
+		t->asmlns->items[t->asmlns->count] = tp->items[i];
 		t->asmlns->count++;
 	}
 }
 
-void addasmlns(TRANSLATOR* t, LINE* ln, char** insts, int instcount) {
+void addasmlns(TRANSLATOR* t, LINE* ln, TEMPLATE* tp) {
 	// instruction comment
-	insts[0] = mkcom(t, ln);
+	tp->items[0] = mkcom(t, ln);
 	
-	addasm(t, insts, instcount);
+	addasm(t, tp);
 }
 
-void startpoppush(TRANSLATOR* t, LINE* ln, int indlen, char** insts) {
+void startpoppush(TRANSLATOR* t, LINE* ln, int indlen, TEMPLATE* tp) {
 	// @segment
-	insts[1] = switchseg(t, ln);
+	tp->items[1] = switchseg(t, ln);
 	
 	// D=M
-	insts[2] = heapstrtoclean(t, "D=M");
+	tp->items[2] = heapstrtoclean(t, "D=M");
 
 	// @i
-	insts[3] = mkind(t, ln, indlen);
+	tp->items[3] = mkind(t, ln, indlen);
 }
 
 void pushcons(TRANSLATOR* t, LINE* ln, int indlen) {
 	// @i
-	tpushcons[1] = mkind(t, ln, indlen);
+	tpushcons.items[1] = mkind(t, ln, indlen);
 
-	addasmlns(t, ln, tpushcons, TPUSHCONSN);
+	addasmlns(t, ln, &tpushcons);
 }
 
 void pushstat(TRANSLATOR* t, LINE* ln, int indlen) {
 	// @fname.i
-	tpushstat[1] = mkstatind(t, ln, indlen);
+	tpushstat.items[1] = mkstatind(t, ln, indlen);
 
-	addasmlns(t, ln, tpushstat, TPUSHSTATN);
+	addasmlns(t, ln, &tpushstat);
 }
 
 void pushtemp(TRANSLATOR* t, LINE* ln, int indlen) {
 	// @5+i
-	tpushtemp[1] = mktempind(t, ln, indlen);
+	tpushtemp.items[1] = mktempind(t, ln, indlen);
 
-	addasmlns(t, ln, tpushtemp, TPUSHTEMPN);
+	addasmlns(t, ln, &tpushtemp);
 }
 
 void pushpointer(TRANSLATOR* t, LINE* ln, int indlen) {
 	// @THIS/@THAT
-	tpushpointer[1] = mkpointerind(t, ln, indlen);
+	tpushpointer.items[1] = mkpointerind(t, ln, indlen);
 
-	addasmlns(t, ln, tpushpointer, TPUSHPOINTERN);
+	addasmlns(t, ln, &tpushpointer);
 }
 
 void push(TRANSLATOR* t, LINE* ln, int indlen) {
-	startpoppush(t, ln, indlen, tpush);
+	startpoppush(t, ln, indlen, &tpush);
 
-	addasmlns(t, ln, tpush, TPUSHN);
+	addasmlns(t, ln, &tpush);
 }
 
 void popstat(TRANSLATOR* t, LINE* ln, int indlen) {
 	// @fname.i
-	tpopstat[TPOPSTATN-2] = mkstatind(t, ln, indlen);
+	tpopstat.items[tpopstat.count-2] = mkstatind(t, ln, indlen);
 
 	// M=D
-	tpopstat[TPOPSTATN-1] = heapstrtoclean(t, "M=D");
+	tpopstat.items[tpopstat.count-1] = heapstrtoclean(t, "M=D");
 
-	addasmlns(t, ln, tpopstat, TPOPSTATN);
+	addasmlns(t, ln, &tpopstat);
 }
 
 void poptemp(TRANSLATOR* t, LINE* ln, int indlen) {
 	// @5+i
-	tpoptemp[TPOPTEMPN-2] = mktempind(t, ln, indlen);
+	tpoptemp.items[tpoptemp.count-2] = mktempind(t, ln, indlen);
 
 	// M=D
-	tpoptemp[TPOPTEMPN-1] = heapstrtoclean(t, "M=D");
+	tpoptemp.items[tpoptemp.count-1] = heapstrtoclean(t, "M=D");
 
-	addasmlns(t, ln, tpoptemp, TPOPTEMPN);
+	addasmlns(t, ln, &tpoptemp);
 }
 
 void poppointer(TRANSLATOR* t, LINE* ln, int indlen) {
 	// @THIS/@THAT
-	tpoppointer[TPOPPOINTERN-2] = mkpointerind(t, ln, indlen);
+	tpoppointer.items[tpoppointer.count-2] = mkpointerind(t, ln, indlen);
 
 	// M=D
-	tpoppointer[TPOPPOINTERN-1] = heapstrtoclean(t, "M=D");
+	tpoppointer.items[tpoppointer.count-1] = heapstrtoclean(t, "M=D");
 
-	addasmlns(t, ln, tpoppointer, TPOPPOINTERN);
+	addasmlns(t, ln, &tpoppointer);
 }
 
 void pop(TRANSLATOR* t, LINE* ln, int indlen) {
-	startpoppush(t, ln, indlen, tpop);
+	startpoppush(t, ln, indlen, &tpop);
 
-	addasmlns(t, ln, tpop, TPOPN);
+	addasmlns(t, ln, &tpop);
 }
 
 void arith(TRANSLATOR* t, LINE* ln, char* op) {
-	tarith[TARITHN-1] = heapstrtoclean(t, op);
+	tarith.items[tarith.count-1] = heapstrtoclean(t, op);
 
-	addasmlns(t, ln, tarith, TARITHN);
+	addasmlns(t, ln, &tarith);
 }
 
 void comp(TRANSLATOR* t, LINE* ln, char* op) {
@@ -365,19 +365,19 @@ void comp(TRANSLATOR* t, LINE* ln, char* op) {
 	int labellen = strlen(label);
 
 	// @label
-	tcomp[TCOMPN-6] = atlab(t, label, labellen);
+	tcomp.items[tcomp.count-6] = atlab(t, label, labellen);
 	
 	// D;J(op)
 	int opsz = sizeof(char) * 6;
 	char* trueop = (char*)malloc(opsz);
 	snprintf(trueop, opsz, "D;J%s", op);
-	tcomp[TCOMPN-5] = trueop;
+	tcomp.items[tcomp.count-5] = trueop;
 	pushtoclean(t, trueop);
 
 	// (label)
-	tcomp[TCOMPN-1] = mklab(t, label, labellen);
+	tcomp.items[tcomp.count-1] = mklab(t, label, labellen);
 
-	addasmlns(t, ln, tcomp, TCOMPN);
+	addasmlns(t, ln, &tcomp);
 };
 
 void label(TRANSLATOR* t, LINE* ln) {
@@ -389,40 +389,40 @@ void label(TRANSLATOR* t, LINE* ln) {
 	char* lab = (char*)malloc(sz);
 	snprintf(lab, sz, "(%s$%s)", t->lastfun, ln->tokens[1]);
 	pushtoclean(t, lab);
-	tlabel[TLABELN-1] = lab;
+	tlabel.items[tlabel.count-1] = lab;
 
-	addasmlns(t, ln, tlabel, TLABELN);
+	addasmlns(t, ln, &tlabel);
 }
 
 void mygoto(TRANSLATOR* t, LINE* ln) {
 	checklab(t, ln);
 
 	// @label
-	tgoto[TGOTON-2] = mkgotolab(t, ln);
+	tgoto.items[tgoto.count-2] = mkgotolab(t, ln);
 
-	addasmlns(t, ln, tgoto, TGOTON);
+	addasmlns(t, ln, &tgoto);
 }
 
 void ifgoto(TRANSLATOR* t, LINE* ln) {
 	checklab(t, ln);
 	
 	// @label
-	tifgoto[TIFGOTON-2] = mkgotolab(t, ln);
+	tifgoto.items[tifgoto.count-2] = mkgotolab(t, ln);
 
-	addasmlns(t, ln, tifgoto, TIFGOTON);
+	addasmlns(t, ln, &tifgoto);
 }
 
 int pushframe(TRANSLATOR* t, LINE* ln, char* retlab, int retlablen) {
-	tcallstart[1] = atlab(t, retlab, retlablen);
+	tcallstart.items[1] = atlab(t, retlab, retlablen);
 
-	addasmlns(t, ln, tcallstart, TCALLSTARTN);
+	addasmlns(t, ln, &tcallstart);
 
-	for(int i = 0; i < TFRAMEVARSN; i++) {
-		tcallpush[0] = tframevars[i];
-		addasm(t, tcallpush, TCALLPUSHN);
+	for(int i = 0; i < tframevars.count; i++) {
+		tcallpush.items[0] = tframevars.items[i];
+		addasm(t, &tcallpush);
 	}
 
-	return TFRAMEVARSN + 1;
+	return tframevars.count + 1;
 }
 
 void call(TRANSLATOR* t, LINE* ln) {
@@ -439,14 +439,14 @@ void call(TRANSLATOR* t, LINE* ln) {
 	int nargslen = strlen(ln->tokens[2]);
 	checknargs(t, ln, nargslen);
 	int nargs = atoi(ln->tokens[2]);
-	tcallsetarg[TCALLSETARGN-4] = atn(t, nargs + framesize);
-	addasm(t, tcallsetarg, TCALLSETARGN);
+	tcallsetarg.items[tcallsetarg.count-4] = atn(t, nargs + framesize);
+	addasm(t, &tcallsetarg);
 	
 	// jmp
 	int jmplen = strlen(ln->tokens[1]);
-	tcalljmp[TCALLJMPN-3] = atlab(t, ln->tokens[1], jmplen);
-	tcalljmp[TCALLJMPN-1] = mklab(t, retlab, retlablen);
-	addasm(t, tcalljmp, TCALLJMPN);
+	tcalljmp.items[tcalljmp.count-3] = atlab(t, ln->tokens[1], jmplen);
+	tcalljmp.items[tcalljmp.count-1] = mklab(t, retlab, retlablen);
+	addasm(t, &tcalljmp);
 }
 
 void function(TRANSLATOR* t, LINE* ln) {
@@ -465,8 +465,8 @@ void function(TRANSLATOR* t, LINE* ln) {
 	t->cmpind = 0;
 
 	// (funcname)
-	tfunction[1] = mklab(t, ln->tokens[1], funlen);
-	addasmlns(t, ln, tfunction, TFUNCTIONN);
+	tfunction.items[1] = mklab(t, ln->tokens[1], funlen);
+	addasmlns(t, ln, &tfunction);
 
 	// repeat nVars times:
 	int nlocalslen = strlen(ln->tokens[2]);
@@ -474,19 +474,19 @@ void function(TRANSLATOR* t, LINE* ln) {
 	int nlocals = atoi(ln->tokens[2]);
 
 	for(int i = 0; i < nlocals; i++) {
-		addasm(t, tfunctionpush, TFUNCTIONPUSHN);
+		addasm(t, &tfunctionpush);
 	}
 }
 
 void myreturn(TRANSLATOR* t, LINE* ln) {
-	addasmlns(t, ln, tstartreturn, TSTARTRETURNN);
+	addasmlns(t, ln, &tstartreturn);
 	
-	for(int i = TFRAMEVARSN-1; i >= 0; i--) {
-		tretpop[TRETPOPN-2] = tframevars[i];
-		addasm(t, tretpop, TRETPOPN);
+	for(int i = tframevars.count-1; i >= 0; i--) {
+		tretpop.items[tretpop.count-2] = tframevars.items[i];
+		addasm(t, &tretpop);
 	}
 
-	addasm(t, tendreturn, TENDRETURNN);
+	addasm(t, &tendreturn);
 }
 
 void switchpush(TRANSLATOR* t, LINE* ln) {
@@ -534,7 +534,7 @@ void switchop(TRANSLATOR* t, LINE* ln) {
 	else if(!strcmp(op, "sub"))
 		arith(t, ln, "M=M-D");
 	else if(!strcmp(op, "neg"))
-		addasmlns(t, ln, tneg, TNEGN);
+		addasmlns(t, ln, &tneg);
 	else if(!strcmp(op, "eq"))
 		comp(t, ln, "EQ");
 	else if(!strcmp(op, "gt"))
@@ -546,7 +546,7 @@ void switchop(TRANSLATOR* t, LINE* ln) {
 	else if(!strcmp(op, "or"))
 		arith(t, ln, "M=D|M");
 	else if(!strcmp(op, "not"))
-		addasmlns(t, ln, tnot, TNOTN);
+		addasmlns(t, ln, &tnot);
 	else if(!strcmp(op, "label"))
 		label(t, ln);
 	else if(!strcmp(op, "goto"))

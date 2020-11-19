@@ -1,8 +1,12 @@
 #ifndef templates
 #define templates
 
-#define TPUSHN 11
-char* tpush[TPUSHN] = {
+typedef struct {
+	char** items;
+	int count;
+} TEMPLATE;
+
+char* tpushlns[] = {
 	"",
 	"",
 	"",
@@ -15,9 +19,12 @@ char* tpush[TPUSHN] = {
 	"@SP",
 	"M=M+1",
 };
+TEMPLATE tpush = {
+	.items = tpushlns,
+	.count = sizeof(tpushlns) / sizeof(char*)
+};
 
-#define TPUSHCONSN 8
-char* tpushcons[TPUSHCONSN] = {
+char* tpushconslns[] = {
 	"",
 	"",
 	"D=A",
@@ -27,9 +34,12 @@ char* tpushcons[TPUSHCONSN] = {
 	"@SP",
 	"M=M+1",
 };
+TEMPLATE tpushcons = {
+	.items = tpushconslns,
+	.count = sizeof(tpushconslns) / sizeof(char*)
+};
 
-#define TPUSHSTATN 8
-char* tpushstat[TPUSHSTATN] = {
+char* tpushstatlns[] = {
 	"",
 	"",
 	"D=M",
@@ -39,15 +49,22 @@ char* tpushstat[TPUSHSTATN] = {
 	"@SP",
 	"M=M+1",
 };
+TEMPLATE tpushstat = {
+	.items = tpushstatlns,
+	.count = sizeof(tpushstatlns) / sizeof(char*)
+};
 
-#define TPUSHTEMPN TPUSHSTATN
-char** tpushtemp = tpushstat;
+TEMPLATE tpushtemp = {
+	.items = tpushstatlns,
+	.count = sizeof(tpushstatlns) / sizeof(char*)
+};
 
-#define TPUSHPOINTERN TPUSHSTATN
-char** tpushpointer = tpushstat;
+TEMPLATE tpushpointer = {
+	.items = tpushstatlns,
+	.count = sizeof(tpushstatlns) / sizeof(char*)
+};
 
-#define TPOPN 13
-char* tpop[TPOPN] = {
+char* tpoplns[] = {
 	"",
 	"",
 	"",
@@ -62,9 +79,12 @@ char* tpop[TPOPN] = {
 	"A=M",
 	"M=D"
 };
+TEMPLATE tpop = {
+	.items = tpoplns,
+	.count = sizeof(tpoplns) / sizeof(char*)
+};
 
-#define TPOPSTATN 6
-char* tpopstat[TPOPSTATN] = {
+char* tpopstatlns[] = {
 	"",
 	"@SP",
 	"AM=M-1",
@@ -72,15 +92,22 @@ char* tpopstat[TPOPSTATN] = {
 	"",
 	""
 };
+TEMPLATE tpopstat = {
+	.items = tpopstatlns,
+	.count = sizeof(tpopstatlns) / sizeof(char*)
+};
 
-#define TPOPTEMPN TPOPSTATN
-char** tpoptemp = tpopstat;
+TEMPLATE tpoptemp = {
+	.items = tpopstatlns,
+	.count = sizeof(tpopstatlns) / sizeof(char*)
+};
 
-#define TPOPPOINTERN TPOPSTATN
-char** tpoppointer = tpopstat;
+TEMPLATE tpoppointer = {
+	.items = tpopstatlns,
+	.count = sizeof(tpopstatlns) / sizeof(char*)
+};
 
-#define TARITHN 6
-char* tarith[TARITHN] = {
+char* tarithlns[] = {
 	"",
 	"@SP",
 	"AM=M-1",
@@ -88,25 +115,34 @@ char* tarith[TARITHN] = {
 	"A=A-1",
 	""
 };
+TEMPLATE tarith = {
+	.items = tarithlns,
+	.count = sizeof(tarithlns) / sizeof(char*)
+};
 
-#define TNEGN 4
-char* tneg[TNEGN] = {
+char* tneglns[] = {
 	"",
 	"@SP",
 	"A=M-1",
 	"M=-M",
 };
+TEMPLATE tneg = {
+	.items = tneglns,
+	.count = sizeof(tneglns) / sizeof(char*)
+};
 
-#define TNOTN 4
-char* tnot[TNOTN] = {
+char* tnotlns[] = {
 	"",
 	"@SP",
 	"A=M-1",
 	"M=!M",
 };
+TEMPLATE tnot = {
+	.items = tnotlns,
+	.count = sizeof(tnotlns) / sizeof(char*)
+};
 
-#define TCOMPN 13
-char* tcomp[TCOMPN] = {
+char* tcomplns[] = {
 	"",
 	"@SP",
 	"AM=M-1",
@@ -121,22 +157,31 @@ char* tcomp[TCOMPN] = {
 	"M=0",
 	""
 };
+TEMPLATE tcomp = {
+	.items = tcomplns,
+	.count = sizeof(tcomplns) / sizeof(char*)
+};
 
-#define TLABELN 2
-char* tlabel[TLABELN] = {
+char* tlabellns[] = {
 	"",
 	""
 };
+TEMPLATE tlabel = {
+	.items = tlabellns,
+	.count = sizeof(tlabellns) / sizeof(char*)
+};
 
-#define TGOTON 3
-char* tgoto[TGOTON] = {
+char* tgotolns[] = {
 	"",
 	"",
 	"0;JMP"
 };
+TEMPLATE tgoto = {
+	.items = tgotolns,
+	.count = sizeof(tgotolns) / sizeof(char*)
+};
 
-#define TIFGOTON 6
-char* tifgoto[TIFGOTON] = {
+char* tifgotolns[] = {
 	"",
 	"@SP",
 	"AM=M-1",
@@ -144,9 +189,12 @@ char* tifgoto[TIFGOTON] = {
 	"",
 	"D;JNE"
 };
+TEMPLATE tifgoto = {
+	.items = tifgotolns,
+	.count = sizeof(tifgotolns) / sizeof(char*)
+};
 
-#define TCALLSTARTN 8
-char* tcallstart[TCALLSTARTN] = {
+char* tcallstartlns[] = {
 	"",
 	"",
 	"D=A",
@@ -156,9 +204,12 @@ char* tcallstart[TCALLSTARTN] = {
 	"@SP",
 	"M=M+1",
 };
+TEMPLATE tcallstart = {
+	.items = tcallstartlns,
+	.count = sizeof(tcallstartlns) / sizeof(char*)
+};
 
-#define TCALLPUSHN 7
-char* tcallpush[TCALLPUSHN] = {
+char* tcallpushlns[] = {
 	"",
 	"D=M",
 	"@SP",
@@ -167,9 +218,12 @@ char* tcallpush[TCALLPUSHN] = {
 	"@SP",
 	"M=M+1",
 };
+TEMPLATE tcallpush = {
+	.items = tcallpushlns,
+	.count = sizeof(tcallpushlns) / sizeof(char*)
+};
 
-#define TCALLSETARGN 8
-char* tcallsetarg[TCALLSETARGN] = {
+char* tcallsetarglns[] = {
 	"@SP",
 	"D=M",
 	"@LCL",
@@ -179,39 +233,54 @@ char* tcallsetarg[TCALLSETARGN] = {
 	"@ARG",
 	"M=D"
 };
+TEMPLATE tcallsetarg = {
+	.items = tcallsetarglns,
+	.count = sizeof(tcallsetarglns) / sizeof(char*)
+};
 
-#define TCALLJMPN 3
-char* tcalljmp[TCALLJMPN] = {
+char* tcalljmplns[] = {
 	"",
 	"0;JMP",
 	""
 };
+TEMPLATE tcalljmp = {
+	.items = tcalljmplns,
+	.count = sizeof(tcalljmplns) / sizeof(char*)
+};
 	
-#define TFRAMEVARSN 4
-char* tframevars[TFRAMEVARSN] = {
+char* tframevarslns[] = {
 	"@LCL",
 	"@ARG",
 	"@THIS",
 	"@THAT"
 };
+TEMPLATE tframevars = {
+	.items = tframevarslns,
+	.count = sizeof(tframevarslns) / sizeof(char*)
+};
 
-#define TFUNCTIONN 2
-char* tfunction[TFUNCTIONN] = {
+char* tfunctionlns[] = {
 	"",
 	""
 };
+TEMPLATE tfunction = {
+	.items = tfunctionlns,
+	.count = sizeof(tfunctionlns) / sizeof(char*)
+};
 
-#define TFUNCTIONPUSHN 5
-char* tfunctionpush[TFUNCTIONPUSHN] = {
+char* tfunctionpushlns[] = {
 	"@SP",
 	"A=M",
 	"M=0",
 	"@SP",
 	"M=M+1"
 };
+TEMPLATE tfunctionpush = {
+	.items = tfunctionpushlns,
+	.count = sizeof(tfunctionpushlns) / sizeof(char*)
+};
 
-#define TSTARTRETURNN 18
-char* tstartreturn[TSTARTRETURNN] = {
+char* tstartreturnlns[] = {
 	"",
 	"@LCL",
 	"D=M",
@@ -231,21 +300,31 @@ char* tstartreturn[TSTARTRETURNN] = {
 	"@SP",
 	"M=D"
 };
+TEMPLATE tstartreturn = {
+	.items = tstartreturnlns,
+	.count = sizeof(tstartreturnlns) / sizeof(char*)
+};
 
-#define TRETPOPN 5
-char* tretpop[TRETPOPN] = {
+char* tretpoplns[] = {
 	"@LCL",
 	"AM=M-1",
 	"D=M",
 	"",
 	"M=D",
 };
+TEMPLATE tretpop = {
+	.items = tretpoplns,
+	.count = sizeof(tretpoplns) / sizeof(char*)
+};
 
-#define TENDRETURNN 3
-char* tendreturn[TENDRETURNN] = {
+char* tendreturnlns[] = {
 	"@R13",
 	"A=M",
 	"0;JMP"
+};
+TEMPLATE tendreturn = {
+	.items = tendreturnlns,
+	.count = sizeof(tendreturnlns) / sizeof(char*)
 };
 
 #endif
