@@ -2,9 +2,10 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
+#include <stdbool.h>
 #include "parser.h"
 
-void freelns(struct lnarray* lns) {
+void freelns(LINEARRAY* lns) {
 	for(int i = 0; i < lns->count; i++) {
 		int tkcount = lns->lns[i]->tokenscount;
 		for(int j = 0; j < tkcount; j++) {
@@ -17,7 +18,7 @@ void freelns(struct lnarray* lns) {
 	free(lns);
 }
 
-void freeparser(struct Parser* p) {
+void freeparser(PARSER* p) {
 	freelns(p->lns);
 	free(p);
 }
@@ -32,7 +33,7 @@ void gountilbrk (FILE* input) {
 	}
 }
 
-void getinfo(struct Parser* p) {
+void getinfo(PARSER* p) {
 	p->lns->count = 0;
 	p->maxtokens = 0;
 	p->widestln = 0;
@@ -74,17 +75,17 @@ void getinfo(struct Parser* p) {
 	rewind(p->input);
 }
 
-struct Parser* mkparser(FILE* input) {
-	struct Parser* p = (struct Parser*)malloc(sizeof(struct Parser));
-	struct lnarray* lns = (struct lnarray*)malloc(sizeof(struct lnarray));
+PARSER* mkparser(FILE* input) {
+	PARSER* p = (PARSER*)malloc(sizeof(PARSER));
+	LINEARRAY* lns = (LINEARRAY*)malloc(sizeof(LINEARRAY));
 	p->input = input;
 	p->lns = lns;
 	getinfo(p);
 	return p;
 }
 
-void parse(struct Parser* p) {
-	struct line** lns = (struct line**)malloc(sizeof(struct line*)*p->lns->count);
+void parse(PARSER* p) {
+	LINE** lns = (LINE**)malloc(sizeof(LINE*)*p->lns->count);
 	p->lns->lns = lns;
 	p->lns->count = 0;
 
@@ -111,7 +112,7 @@ void parse(struct Parser* p) {
 			if(c == '\n') {
 				truelncount++;
 				if(tokensind > 0) {
-					struct line* newln = (struct line*)malloc(sizeof(struct line));
+					LINE* newln = (LINE*)malloc(sizeof(LINE));
 					newln->tokens = (char**)malloc(sizeof(char*)*tokensind);
 					for(int i = 0; i < tokensind; i++) {
 						newln->tokens[i] = tokens[i];

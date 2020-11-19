@@ -1,24 +1,24 @@
-#ifndef parser
-#define parser
-struct line {
+#ifndef PARSER_H
+#define PARSER_H
+typedef struct {
 	char** tokens;
 	int tokenscount;
 	int truen;
-};
+} LINE;
 
-struct lnarray {
-	struct line** lns;
+typedef struct {
+	LINE** lns;
 	int count;
-};
+} LINEARRAY;
 
-struct Parser {
+typedef struct {
 	FILE* input;
-	struct lnarray* lns;
+	LINEARRAY* lns;
 	int widestln;
 	int maxtokens;
-};
+} PARSER;
 
-struct Parser* mkparser(FILE* input);
-void freeparser(struct Parser* p);
-void parse(struct Parser* p);
+PARSER* mkparser(FILE* input);
+void freeparser(PARSER* p);
+void parse(PARSER* p);
 #endif

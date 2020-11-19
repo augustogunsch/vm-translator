@@ -4,23 +4,24 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <dirent.h>
+#include <stdbool.h>
 #include "parser.h"
 #include "translator.h"
 #include "bootstrap.h"
 #include "util.h"
 
-struct TranslationList {
+typedef struct {
 	char** files;
 	char** fnames;
 	int filecount;
 	int filessz;
 	char* output;
-};
+} TRANSLATIONLIST;
 
 char* getname(char* f, int len) {
 	int startind = 0;
 	int endind = len - 1;
-	short readsmt = 0;
+	bool readsmt = false;
  
 	for(int i = endind; i >= 0; i--) {
 		if(f[i] == '/') {
@@ -34,7 +35,7 @@ char* getname(char* f, int len) {
 		}
 		if(f[i] == '.')
 			endind = i-1;
-		readsmt = 1;
+		readsmt = true;
 	}
 
 	int size = sizeof(char)*(endind - startind + 2);
@@ -46,7 +47,7 @@ char* getname(char* f, int len) {
 
 char* getfullname(char* f, int len) {
 	int endind = len - 1;
-	short readsmt = 0;
+	bool readsmt = false;
  
 	for(int i = endind; i >= 0; i--) {
 		if(f[i] == '/') {
@@ -58,7 +59,7 @@ char* getfullname(char* f, int len) {
 		}
 		if(f[i] == '.')
 			endind = i-1;
-		readsmt = 1;
+		readsmt = true;
 	}
 
 	int size = sizeof(char)*(endind + 2);
@@ -67,27 +68,27 @@ char* getfullname(char* f, int len) {
 	return retstr;
 }
 
-short isdotvm(char* f, int extind) {
+bool isdotvm(char* f, int extind) {
 	char* extstr = f + (sizeof(char) * extind);
 	return strcmp(extstr, ".vm") == 0;
 }
 
-short isdir(char* f, int len) {
-	short readsmt = 0;
+bool isdir(char* f, int len) {
+	bool readsmt = false;
 	for(int i = len-1; i >= 0; i--) {
 		if(f[i] == '.')
 			if(readsmt)
-				return 0;
+				return false;
 			else
 				continue;
 		if(f[i] == '/')
 			return 1;
-		readsmt = 1;
+		readsmt = true;
 	}
-	return 1;
+	return true;
 }
 
-char* getoutname(char* input, int len, short isdir) {
+char* getoutname(char* input, int len, bool isdir) {
 	char* outname;
 	if(isdir) {
 		char* name = getname(input, len);
@@ -106,7 +107,7 @@ char* getoutname(char* input, int len, short isdir) {
 	return outname;
 }
 
-void addfile(struct TranslationList* l, char* fullname, char* name) {
+void addfile(TRANSLATIONLIST* l, char* fullname, char* name) {
 	int count = l->filecount;
 	int targsize = (count + 1) * sizeof(char*);
 
@@ -122,16 +123,16 @@ void addfile(struct TranslationList* l, char* fullname, char* name) {
 	l->filecount++;
 }
 
-struct TranslationList* getfiles(char* input) {
+TRANSLATIONLIST* getfiles(char* input) {
 	int filessz = sizeof(char*) * 16;
-	struct TranslationList* filelist = (struct TranslationList*)malloc(sizeof(struct TranslationList));
+	TRANSLATIONLIST* filelist = (TRANSLATIONLIST*)malloc(sizeof(TRANSLATIONLIST));
 	filelist->files = (char**)malloc(filessz);
 	filelist->fnames = (char**)malloc(filessz);
 	filelist->filessz = filessz;
 	filelist->filecount = 0;
 
 	int inplen = strlen(input);
-	short isitdir = isdir(input, inplen);
+	bool isitdir = isdir(input, inplen);
 	if(isitdir) {
 		DIR* dir = opendir(input);
 
@@ -182,7 +183,7 @@ struct TranslationList* getfiles(char* input) {
 	return filelist;
 }
 
-void freetranslationlist(struct TranslationList* ls) {
+void freetranslationlist(TRANSLATIONLIST* ls) {
 	for(int i = 0; i < ls->filecount; i++) {
 		free(ls->files[i]);
 		free(ls->fnames[i]);
@@ -199,7 +200,7 @@ int main(int argc, char* argv[]) {
 		return 1;
 	}
 
-	struct TranslationList* ls = getfiles(argv[1]);
+	TRANSLATIONLIST* ls = getfiles(argv[1]);
 	FILE* output = fopen(ls->output, "w");
 
 	for(int i = 0; i < BOOTSTRAPN; i++) {
@@ -218,11 +219,11 @@ int main(int argc, char* argv[]) {
 		}
 
 		// parsing
-		struct Parser* p = mkparser(input);
+		PARSER* p = mkparser(input);
 		parse(p);
 
 		// translating
-		struct Translator* t = mktranslator(p->lns, fname);
+		TRANSLATOR* t = mktranslator(p->lns, fname);
 		translate(t);
 		freeparser(p);
 		

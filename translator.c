@@ -6,40 +6,42 @@
 #include "templates.h"
 #include "util.h"
 
-void pushtoclean(struct Translator* t, char* topush) {
-	int nextsz = sizeof(char*)*(t->tocleanind+1);
-	if(nextsz >= t->tocleansize) {
-		t->tocleansize = nextsz * 2;
-		t->toclean = realloc(t->toclean, t->tocleansize);
+void pushtoclean(TRANSLATOR* t, char* topush) {
+	int nextsz = sizeof(char*)*(t->toclean->count+1);
+	if(nextsz >= t->toclean->size) {
+		t->toclean->size = nextsz * 2;
+		t->toclean->items = realloc(t->toclean->items, t->toclean->size);
 	}
-	t->toclean[t->tocleanind] = topush;
-	t->tocleanind++;
+	t->toclean->items[t->toclean->count] = topush;
+	t->toclean->count++;
 }
 
-void freetoclean(struct Translator* t) {
-	for(int i = 0; i < t->tocleanind; i++)
-		free(t->toclean[i]);
+void freetoclean(TRANSLATOR* t) {
+	for(int i = 0; i < t->toclean->count; i++)
+		free(t->toclean->items[i]);
+	free(t->toclean->items);
 	free(t->toclean);
 }
 
-void freetranslator(struct Translator* t) {
+void freetranslator(TRANSLATOR* t) {
+	free(t->asmlns->items);
 	free(t->asmlns);
 	freetoclean(t);
 	free(t);
 }
 
-void printasmlns(struct Translator* t, FILE* stream) {
-	for(int i = 0; i < t->asmind; i++)
-		fprintf(stream, "%s\n", t->asmlns[i]);
+void printasmlns(TRANSLATOR* t, FILE* stream) {
+	for(int i = 0; i < t->asmlns->count; i++)
+		fprintf(stream, "%s\n", t->asmlns->items[i]);
 }
 
-char* heapstrtoclean(struct Translator* t, const char* input) {
+char* heapstrtoclean(TRANSLATOR* t, const char* input) {
 	char* newstr = heapstr(input, strlen(input));
 	pushtoclean(t, newstr);
 	return newstr;
 }
 
-char* switchseg(struct Translator* t, struct line* ln) {
+char* switchseg(TRANSLATOR* t, LINE* ln) {
 	char* seg = ln->tokens[1];
 	if(!strcmp(seg, "local"))
 		return heapstrtoclean(t, "@LCL");
@@ -53,7 +55,7 @@ char* switchseg(struct Translator* t, struct line* ln) {
 	exit(1);
 }
 
-int lnlen(int* out, struct line* ln) {
+int lnlen(int* out, LINE* ln) {
 	int len = 0;
 	for(int i = 0; i < ln->tokenscount; i++) {
 		int l = strlen(ln->tokens[i]);
@@ -65,7 +67,7 @@ int lnlen(int* out, struct line* ln) {
 
 // produce comment as follows:
 // pop/push segment i
-char* mkcom(struct Translator* t, struct line* ln) {
+char* mkcom(TRANSLATOR* t, LINE* ln) {
 	int lens[ln->tokenscount];
 	int comlen = sizeof(char) * lnlen(lens, ln) + ln->tokenscount + 3;
 	char* comment = (char*)malloc(comlen);
@@ -87,7 +89,7 @@ char* mkcom(struct Translator* t, struct line* ln) {
 	return comment;
 }
 
-void checknumber(struct Translator* t, struct line* ln, int indlen, char* name, char* n) {
+void checknumber(TRANSLATOR* t, LINE* ln, int indlen, char* name, char* n) {
 	for(int i = 0; i < indlen; i++)
 		if(!isdigit(n[i])) {
 			fprintf(stderr, "Invalid %s '%s'; file %s.vm, line %i\n", t->fname, name, n, ln->truen);
@@ -95,40 +97,26 @@ void checknumber(struct Translator* t, struct line* ln, int indlen, char* name, 
 		}
 }
 
-void checknargs(struct Translator* t, struct line* ln, int nargslen) {
+void checknargs(TRANSLATOR* t, LINE* ln, int nargslen) {
 	checknumber(t, ln, nargslen, "argument number", ln->tokens[2]);
 }
 
-void checknlocals(struct Translator* t, struct line* ln, int nlocalslen) {
+void checknlocals(TRANSLATOR* t, LINE* ln, int nlocalslen) {
 	checknumber(t, ln, nlocalslen, "local variable number", ln->tokens[2]);
 }
 
-void checkind(struct Translator* t, struct line* ln, int indlen) {
+void checkind(TRANSLATOR* t, LINE* ln, int indlen) {
 	checknumber(t, ln, indlen, "index", ln->tokens[2]);
 }
 
-int countplaces(int n) {
-	int places = 1;
-	int divisor = 1;
-	if(n < 0) {
-		n = -n;
-		places++;
-	}
-	while(n / divisor >= 10) {
-		places++;
-		divisor *= 10;
-	}
-	return places;
-}
-
-void checkinfun(struct Translator* t, struct line* ln) {
+void checkinfun(TRANSLATOR* t, LINE* ln) {
 	if(t->funcount <= 0) {
 		fprintf(stderr, "Instruction should be part of a function; file %s.vm, line %i\n", t->fname, ln->truen);
 		exit(1);
 	}
 }
 
-char* mkspeciallab(struct Translator* t, struct line* ln, char* suffix, int* ind) {
+char* mkspeciallab(TRANSLATOR* t, LINE* ln, char* suffix, int* ind) {
 	checkinfun(t, ln);
 	(*ind)++;
 	int sz = (t->lastfunlen + countplaces(*ind) + strlen(suffix) + 3) * sizeof(char);
@@ -138,15 +126,15 @@ char* mkspeciallab(struct Translator* t, struct line* ln, char* suffix, int* ind
 	return lab;
 }
 
-char* mkcmplab(struct Translator* t, struct line* ln) {
+char* mkcmplab(TRANSLATOR* t, LINE* ln) {
 	return mkspeciallab(t, ln, "cmp", &(t->cmpind));
 }
 
-char* mkretlab(struct Translator* t, struct line* ln) {
+char* mkretlab(TRANSLATOR* t, LINE* ln) {
 	return mkspeciallab(t, ln, "ret", &(t->retind));
 }
 
-char* mkind(struct Translator* t, struct line* ln, int indlen) {
+char* mkind(TRANSLATOR* t, LINE* ln, int indlen) {
 	checkind(t, ln, indlen);
 	int newsz = sizeof(char) * (indlen + 2);
 	char* newind = (char*)malloc(newsz);
@@ -155,7 +143,7 @@ char* mkind(struct Translator* t, struct line* ln, int indlen) {
 	return newind;
 }
 
-char* atlab(struct Translator* t, char* label, int labellen) {
+char* atlab(TRANSLATOR* t, char* label, int labellen) {
 	int newsz = sizeof(char) * (labellen + 2);
 	char* newind = (char*)malloc(newsz);
 	snprintf(newind, newsz, "@%s", label);
@@ -163,7 +151,7 @@ char* atlab(struct Translator* t, char* label, int labellen) {
 	return newind;
 }
 
-char* atn(struct Translator* t, int n) {
+char* atn(TRANSLATOR* t, int n) {
 	int newsz = sizeof(char) * (countplaces(n) + 2);
 	char* newind = (char*)malloc(newsz);
 	snprintf(newind, newsz, "@%i", n);
@@ -171,7 +159,7 @@ char* atn(struct Translator* t, int n) {
 	return newind;
 }
 
-char* mklab(struct Translator* t, char* label, int labellen) {
+char* mklab(TRANSLATOR* t, char* label, int labellen) {
 	int newsz = sizeof(char) * (labellen + 3);
 	char* newind = (char*)malloc(newsz);
 	snprintf(newind, newsz, "(%s)", label);
@@ -179,7 +167,7 @@ char* mklab(struct Translator* t, char* label, int labellen) {
 	return newind;
 }
 
-char* mkgotolab(struct Translator* t, struct line* ln) {
+char* mkgotolab(TRANSLATOR* t, LINE* ln) {
 	int sz = sizeof(char) * (t->lastfunlen + strlen(ln->tokens[1]) + 3);
 	char* lab = (char*)malloc(sz);
 	snprintf(lab, sz, "@%s$%s", t->lastfun, ln->tokens[1]);
@@ -187,7 +175,7 @@ char* mkgotolab(struct Translator* t, struct line* ln) {
 	return lab;
 }
 
-char* mkstatind(struct Translator* t, struct line* ln, int indlen) {
+char* mkstatind(TRANSLATOR* t, LINE* ln, int indlen) {
 	checkind(t, ln, indlen);
 	int newsz = sizeof(char) * (t->fnamelen + indlen + 3);
 	char* newind = (char*)malloc(newsz);
@@ -196,7 +184,7 @@ char* mkstatind(struct Translator* t, struct line* ln, int indlen) {
 	return newind;
 }
 
-char* mktempind(struct Translator* t, struct line* ln, int indlen) {
+char* mktempind(TRANSLATOR* t, LINE* ln, int indlen) {
 	checkind(t, ln, indlen);
 	int intind = atoi(ln->tokens[2]);
 	int newsz = sizeof(char) * (indlen + 3);
@@ -206,7 +194,7 @@ char* mktempind(struct Translator* t, struct line* ln, int indlen) {
 	return newind;
 }
 
-char* mkpointerind(struct Translator* t, struct line* ln, int indlen) {
+char* mkpointerind(TRANSLATOR* t, LINE* ln, int indlen) {
 	if(indlen > 1) {
 		fprintf(stderr, "Invalid index '%s'; file %s.vm, line %i\n", t->fname, ln->tokens[2], ln->truen);
 		exit(1);
@@ -230,15 +218,15 @@ char* mkpointerind(struct Translator* t, struct line* ln, int indlen) {
 	return newind;
 }
 
-void checkasmsize(struct Translator* t, int toadd) {
-	int targ = sizeof(char*)*(t->asmind+toadd);
-	if(targ >= t->asmsize) {
-		t->asmsize = targ * 2;
-		t->asmlns = (char**)realloc(t->asmlns, t->asmsize);
+void checkasmsize(TRANSLATOR* t, int toadd) {
+	int targ = sizeof(char*)*(t->asmlns->count+toadd);
+	if(targ >= t->asmlns->size) {
+		t->asmlns->size = targ * 2;
+		t->asmlns->items = (char**)realloc(t->asmlns->items, t->asmlns->size);
 	}
 }
 
-void checkopamnt(struct Translator* t, int amnt, struct line* ln) {
+void checkopamnt(TRANSLATOR* t, int amnt, LINE* ln) {
 	if(ln->tokenscount < 2) {
 		fprintf(stderr, "Missing memory segment; file %s.vm, line %i\n", t->fname, ln->truen);
 		exit(1);
@@ -250,14 +238,14 @@ void checkopamnt(struct Translator* t, int amnt, struct line* ln) {
 		}
 }
 
-void checklab(struct Translator* t, struct line* ln) {
+void checklab(TRANSLATOR* t, LINE* ln) {
 	if(ln->tokenscount < 2) {
 		fprintf(stderr, "Expected label; file %s.vm, line %i\n", t->fname, ln->truen);
 		exit(1);
 	}
 }
 
-void checkfun(struct Translator* t, struct line* ln) {
+void checkfun(TRANSLATOR* t, LINE* ln) {
 	if(ln->tokenscount < 2) {
 		fprintf(stderr, "Expected function; file %s.vm, line %i\n", t->fname, ln->truen);
 		exit(1);
@@ -269,23 +257,23 @@ void checkfun(struct Translator* t, struct line* ln) {
 	}
 }
 
-void addasm(struct Translator* t, char** insts, int instcount) {
+void addasm(TRANSLATOR* t, char** insts, int instcount) {
 	checkasmsize(t, instcount);
 
 	for(int i = 0; i < instcount; i++) {
-		t->asmlns[t->asmind] = insts[i];
-		t->asmind++;
+		t->asmlns->items[t->asmlns->count] = insts[i];
+		t->asmlns->count++;
 	}
 }
 
-void addasmlns(struct Translator* t, struct line* ln, char** insts, int instcount) {
+void addasmlns(TRANSLATOR* t, LINE* ln, char** insts, int instcount) {
 	// instruction comment
 	insts[0] = mkcom(t, ln);
 	
 	addasm(t, insts, instcount);
 }
 
-void startpoppush(struct Translator* t, struct line* ln, int indlen, char** insts) {
+void startpoppush(TRANSLATOR* t, LINE* ln, int indlen, char** insts) {
 	// @segment
 	insts[1] = switchseg(t, ln);
 	
@@ -296,41 +284,41 @@ void startpoppush(struct Translator* t, struct line* ln, int indlen, char** inst
 	insts[3] = mkind(t, ln, indlen);
 }
 
-void pushcons(struct Translator* t, struct line* ln, int indlen) {
+void pushcons(TRANSLATOR* t, LINE* ln, int indlen) {
 	// @i
 	tpushcons[1] = mkind(t, ln, indlen);
 
 	addasmlns(t, ln, tpushcons, TPUSHCONSN);
 }
 
-void pushstat(struct Translator* t, struct line* ln, int indlen) {
+void pushstat(TRANSLATOR* t, LINE* ln, int indlen) {
 	// @fname.i
 	tpushstat[1] = mkstatind(t, ln, indlen);
 
 	addasmlns(t, ln, tpushstat, TPUSHSTATN);
 }
 
-void pushtemp(struct Translator* t, struct line* ln, int indlen) {
+void pushtemp(TRANSLATOR* t, LINE* ln, int indlen) {
 	// @5+i
 	tpushtemp[1] = mktempind(t, ln, indlen);
 
 	addasmlns(t, ln, tpushtemp, TPUSHTEMPN);
 }
 
-void pushpointer(struct Translator* t, struct line* ln, int indlen) {
+void pushpointer(TRANSLATOR* t, LINE* ln, int indlen) {
 	// @THIS/@THAT
 	tpushpointer[1] = mkpointerind(t, ln, indlen);
 
 	addasmlns(t, ln, tpushpointer, TPUSHPOINTERN);
 }
 
-void push(struct Translator* t, struct line* ln, int indlen) {
+void push(TRANSLATOR* t, LINE* ln, int indlen) {
 	startpoppush(t, ln, indlen, tpush);
 
 	addasmlns(t, ln, tpush, TPUSHN);
 }
 
-void popstat(struct Translator* t, struct line* ln, int indlen) {
+void popstat(TRANSLATOR* t, LINE* ln, int indlen) {
 	// @fname.i
 	tpopstat[TPOPSTATN-2] = mkstatind(t, ln, indlen);
 
@@ -340,7 +328,7 @@ void popstat(struct Translator* t, struct line* ln, int indlen) {
 	addasmlns(t, ln, tpopstat, TPOPSTATN);
 }
 
-void poptemp(struct Translator* t, struct line* ln, int indlen) {
+void poptemp(TRANSLATOR* t, LINE* ln, int indlen) {
 	// @5+i
 	tpoptemp[TPOPTEMPN-2] = mktempind(t, ln, indlen);
 
@@ -350,7 +338,7 @@ void poptemp(struct Translator* t, struct line* ln, int indlen) {
 	addasmlns(t, ln, tpoptemp, TPOPTEMPN);
 }
 
-void poppointer(struct Translator* t, struct line* ln, int indlen) {
+void poppointer(TRANSLATOR* t, LINE* ln, int indlen) {
 	// @THIS/@THAT
 	tpoppointer[TPOPPOINTERN-2] = mkpointerind(t, ln, indlen);
 
@@ -360,19 +348,19 @@ void poppointer(struct Translator* t, struct line* ln, int indlen) {
 	addasmlns(t, ln, tpoppointer, TPOPPOINTERN);
 }
 
-void pop(struct Translator* t, struct line* ln, int indlen) {
+void pop(TRANSLATOR* t, LINE* ln, int indlen) {
 	startpoppush(t, ln, indlen, tpop);
 
 	addasmlns(t, ln, tpop, TPOPN);
 }
 
-void arith(struct Translator* t, struct line* ln, char* op) {
+void arith(TRANSLATOR* t, LINE* ln, char* op) {
 	tarith[TARITHN-1] = heapstrtoclean(t, op);
 
 	addasmlns(t, ln, tarith, TARITHN);
 }
 
-void comp(struct Translator* t, struct line* ln, char* op) {
+void comp(TRANSLATOR* t, LINE* ln, char* op) {
 	char* label = mkcmplab(t, ln);
 	int labellen = strlen(label);
 
@@ -392,7 +380,7 @@ void comp(struct Translator* t, struct line* ln, char* op) {
 	addasmlns(t, ln, tcomp, TCOMPN);
 };
 
-void label(struct Translator* t, struct line* ln) {
+void label(TRANSLATOR* t, LINE* ln) {
 	checklab(t, ln);
 	
 	// (funcname$label)
@@ -406,7 +394,7 @@ void label(struct Translator* t, struct line* ln) {
 	addasmlns(t, ln, tlabel, TLABELN);
 }
 
-void mygoto(struct Translator* t, struct line* ln) {
+void mygoto(TRANSLATOR* t, LINE* ln) {
 	checklab(t, ln);
 
 	// @label
@@ -415,7 +403,7 @@ void mygoto(struct Translator* t, struct line* ln) {
 	addasmlns(t, ln, tgoto, TGOTON);
 }
 
-void ifgoto(struct Translator* t, struct line* ln) {
+void ifgoto(TRANSLATOR* t, LINE* ln) {
 	checklab(t, ln);
 	
 	// @label
@@ -424,7 +412,7 @@ void ifgoto(struct Translator* t, struct line* ln) {
 	addasmlns(t, ln, tifgoto, TIFGOTON);
 }
 
-int pushframe(struct Translator* t, struct line* ln, char* retlab, int retlablen) {
+int pushframe(TRANSLATOR* t, LINE* ln, char* retlab, int retlablen) {
 	tcallstart[1] = atlab(t, retlab, retlablen);
 
 	addasmlns(t, ln, tcallstart, TCALLSTARTN);
@@ -437,7 +425,7 @@ int pushframe(struct Translator* t, struct line* ln, char* retlab, int retlablen
 	return TFRAMEVARSN + 1;
 }
 
-void call(struct Translator* t, struct line* ln) {
+void call(TRANSLATOR* t, LINE* ln) {
 	checkfun(t, ln);
 	
 	// return label
@@ -461,7 +449,7 @@ void call(struct Translator* t, struct line* ln) {
 	addasm(t, tcalljmp, TCALLJMPN);
 }
 
-void function(struct Translator* t, struct line* ln) {
+void function(TRANSLATOR* t, LINE* ln) {
 	if(!t->returned) {
 		fprintf(stderr, "Last function did not return; file %s.vm, line %i\n", t->fname, ln->truen);
 		exit(1);
@@ -490,7 +478,7 @@ void function(struct Translator* t, struct line* ln) {
 	}
 }
 
-void myreturn(struct Translator* t, struct line* ln) {
+void myreturn(TRANSLATOR* t, LINE* ln) {
 	addasmlns(t, ln, tstartreturn, TSTARTRETURNN);
 	
 	for(int i = TFRAMEVARSN-1; i >= 0; i--) {
@@ -501,7 +489,7 @@ void myreturn(struct Translator* t, struct line* ln) {
 	addasm(t, tendreturn, TENDRETURNN);
 }
 
-void switchpush(struct Translator* t, struct line* ln) {
+void switchpush(TRANSLATOR* t, LINE* ln) {
 	checkopamnt(t, 3, ln);
 	char* seg = ln->tokens[1];
 	int indlen = strlen(ln->tokens[2]);
@@ -518,7 +506,7 @@ void switchpush(struct Translator* t, struct line* ln) {
 		push(t, ln, indlen);
 }
 
-void switchpop(struct Translator* t, struct line* ln) {
+void switchpop(TRANSLATOR* t, LINE* ln) {
 	checkopamnt(t, 3, ln);
 	char* seg = ln->tokens[1];
 	int indlen = strlen(ln->tokens[2]);
@@ -533,9 +521,9 @@ void switchpop(struct Translator* t, struct line* ln) {
 		pop(t, ln, indlen);
 }
 
-void switchop(struct Translator* t, struct line* ln) {
+void switchop(TRANSLATOR* t, LINE* ln) {
 	char* op = ln->tokens[0];
-	short returned = 0;
+	bool returned = false;
 
 	if(!strcmp(op, "push"))
 		switchpush(t, ln);
@@ -567,7 +555,7 @@ void switchop(struct Translator* t, struct line* ln) {
 		ifgoto(t, ln);
 	else if(!strcmp(op, "return")) {
 		myreturn(t, ln);
-		returned = 1;
+		returned = true;
 	}
 	else if(!strcmp(op, "function"))
 		function(t, ln);
@@ -581,7 +569,7 @@ void switchop(struct Translator* t, struct line* ln) {
 	t->returned = returned;
 }
 
-void translate(struct Translator* t) {
+void translate(TRANSLATOR* t) {
 	for(int i = 0; i < t->lns->count; i++)
 		switchop(t, t->lns->lns[i]);
 
@@ -591,19 +579,23 @@ void translate(struct Translator* t) {
 	}
 }
 
-struct Translator* mktranslator(struct lnarray* lns, char* fname) {
-	struct Translator* t = (struct Translator*)malloc(sizeof(struct Translator));
-	t->asmsize = sizeof(char*)*(lns->count * 15);
-	t->asmind = 0;
+TRANSLATOR* mktranslator(LINEARRAY* lns, char* fname) {
+	TRANSLATOR* t = (TRANSLATOR*)malloc(sizeof(TRANSLATOR));
+
+	t->asmlns = (STRLIST*)malloc(sizeof(STRLIST));
+	t->asmlns->count = 0;
+	t->asmlns->size = sizeof(char*)*(lns->count * 15);
+	t->asmlns->items = (char**)malloc(t->asmlns->size);
+
+	t->toclean = (STRLIST*)malloc(sizeof(STRLIST));
+	t->toclean->count = 0;
+	t->toclean->size = sizeof(char*)*(lns->count * 5);
+	t->toclean->items = (char**)malloc(t->toclean->size);
+
 	t->funcount = 0;
 	t->retind = 0;
 	t->cmpind = 0;
-	t->returned = 1;
-	t->asmlns = (char**)malloc(t->asmsize);
-
-	t->tocleanind = 0;
-	t->tocleansize = sizeof(char*)*(lns->count * 5);
-	t->toclean = (char**)malloc(t->tocleansize);
+	t->returned = true;
 
 	t->lns = lns;
 	t->fname = fname;

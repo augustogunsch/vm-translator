@@ -1,15 +1,18 @@
-#ifndef translator
-#define translator
+#ifndef TRANSLATOR_H
+#define TRANSLATOR_H
+#include <stdbool.h>
 #include "parser.h"
 
-struct Translator {
-	char** asmlns;
-	int asmind;
-	int asmsize;
-	char** toclean;
-	int tocleansize;
-	int tocleanind;
-	struct lnarray* lns;
+typedef struct {
+	char** items;
+	int count;
+	int size;
+} STRLIST;
+
+typedef struct {
+	STRLIST* asmlns;
+	STRLIST* toclean;
+	LINEARRAY* lns;
 	char* fname;
 	int fnamelen;
 	char* lastfun;
@@ -17,11 +20,11 @@ struct Translator {
 	int funcount;
 	int retind;
 	int cmpind;
-	short returned;
-};
+	bool returned;
+} TRANSLATOR;
 
-void freetranslator(struct Translator* t);
-void printasmlns(struct Translator* t, FILE* stream);
-void translate(struct Translator* t);
-struct Translator* mktranslator(struct lnarray* lns, char* fname);
+void freetranslator(TRANSLATOR* t);
+void printasmlns(TRANSLATOR* t, FILE* stream);
+void translate(TRANSLATOR* t);
+TRANSLATOR* mktranslator(LINEARRAY* lns, char* fname);
 #endif
