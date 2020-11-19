@@ -5,10 +5,20 @@
 #include <sys/types.h>
 #include <dirent.h>
 #include <stdbool.h>
+#include <unistd.h>
 #include "parser.h"
 #include "translator.h"
 #include "bootstrap.h"
 #include "util.h"
+
+#include <limits.h>
+#ifndef PATH_MAX
+#ifdef __linux__
+#include <linux/limits.h>
+#else
+#define PATH_MAX 512
+#endif
+#endif
 
 typedef struct {
 	char** files;
@@ -91,7 +101,16 @@ bool isdir(char* f, int len) {
 char* getoutname(char* input, int len, bool isdir) {
 	char* outname;
 	if(isdir) {
-		char* name = getname(input, len);
+		char olddir[PATH_MAX];
+		getcwd(olddir, PATH_MAX);
+
+		chdir(input);
+		char buf[PATH_MAX];
+		getcwd(buf, PATH_MAX);
+
+		chdir(olddir);
+
+		char* name = getname(buf, strlen(buf));
 		int sz = sizeof(char) * (strlen(name)+len+6);
 		outname = (char*)malloc(sz);
 		snprintf(outname, sz, "%s/%s.asm", input, name);
