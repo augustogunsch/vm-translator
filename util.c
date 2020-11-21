@@ -22,3 +22,18 @@ int countplaces(int n) {
 	}
 	return places;
 }
+
+void printlns(LINELIST* lns, FILE* stream) {
+	LINELIST* curln = lns;
+	while(curln != NULL) {
+		fprintf(stream, "%s\n", curln->content);
+		curln = curln->next;
+	}
+}
+
+void freelns(LINELIST* lns) {
+	LINELIST* next = lns->next;
+	free(lns);
+	if(next != NULL)
+		freelns(next);
+}

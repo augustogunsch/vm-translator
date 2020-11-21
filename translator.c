@@ -26,13 +26,9 @@ void freetoclean(TRANSLATOR* t) {
 void freetranslator(TRANSLATOR* t) {
 	free(t->asmlns->items);
 	free(t->asmlns);
+	freelns(t->output);
 	freetoclean(t);
 	free(t);
-}
-
-void printasmlns(TRANSLATOR* t, FILE* stream) {
-	for(int i = 0; i < t->asmlns->count; i++)
-		fprintf(stream, "%s\n", t->asmlns->items[i]);
 }
 
 char* heapstrtoclean(TRANSLATOR* t, const char* input) {
@@ -257,13 +253,21 @@ void checkfun(TRANSLATOR* t, LINE* ln) {
 	}
 }
 
+void pushln(TRANSLATOR* t, char* content) {
+	t->curln->content = content;
+	t->curln->truen = t->lncount;
+	LINELIST* nextln = (LINELIST*)malloc(sizeof(LINELIST));
+	t->curln->next = nextln;
+	t->lastln = t->curln;
+	t->curln = nextln;
+	t->lncount++;
+}
+
 void addasm(TRANSLATOR* t, TEMPLATE* tp) {
 	checkasmsize(t, tp->count);
 
-	for(int i = 0; i < tp->count; i++) {
-		t->asmlns->items[t->asmlns->count] = tp->items[i];
-		t->asmlns->count++;
-	}
+	for(int i = 0; i < tp->count; i++)
+		pushln(t, tp->items[i]);
 }
 
 void addasmlns(TRANSLATOR* t, LINE* ln, TEMPLATE* tp) {
@@ -577,6 +581,8 @@ void translate(TRANSLATOR* t) {
 		fprintf(stderr, "Expected return before end of file; file %s.vm, line %i\n", t->fname, t->lns->count-1);
 		exit(1);
 	}
+	t->lastln->next = NULL;
+	free(t->curln);
 }
 
 TRANSLATOR* mktranslator(LINEARRAY* lns, char* fname) {
@@ -591,6 +597,11 @@ TRANSLATOR* mktranslator(LINEARRAY* lns, char* fname) {
 	t->toclean->count = 0;
 	t->toclean->size = sizeof(char*)*(lns->count * 5);
 	t->toclean->items = (char**)malloc(t->toclean->size);
+
+	LINELIST* newln = (LINELIST*)malloc(sizeof(LINELIST));
+	t->output = newln;
+	t->curln = newln;
+	t->lncount = 0;
 
 	t->funcount = 0;
 	t->retind = 0;

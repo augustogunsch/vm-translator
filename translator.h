@@ -2,6 +2,7 @@
 #define TRANSLATOR_H
 #include <stdbool.h>
 #include "parser.h"
+#include "util.h"
 
 typedef struct {
 	char** items;
@@ -21,10 +22,14 @@ typedef struct {
 	int retind;
 	int cmpind;
 	bool returned;
+
+	LINELIST* output;
+	LINELIST* curln;
+	LINELIST* lastln;
+	int lncount;
 } TRANSLATOR;
 
 void freetranslator(TRANSLATOR* t);
-void printasmlns(TRANSLATOR* t, FILE* stream);
 void translate(TRANSLATOR* t);
 TRANSLATOR* mktranslator(LINEARRAY* lns, char* fname);
 #endif

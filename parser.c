@@ -5,7 +5,7 @@
 #include <stdbool.h>
 #include "parser.h"
 
-void freelns(LINEARRAY* lns) {
+void freelnarray(LINEARRAY* lns) {
 	for(int i = 0; i < lns->count; i++) {
 		int tkcount = lns->lns[i]->tokenscount;
 		for(int j = 0; j < tkcount; j++) {
@@ -19,7 +19,7 @@ void freelns(LINEARRAY* lns) {
 }
 
 void freeparser(PARSER* p) {
-	freelns(p->lns);
+	freelnarray(p->lns);
 	free(p);
 }
 

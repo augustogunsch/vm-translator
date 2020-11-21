@@ -246,7 +246,7 @@ int main(int argc, char* argv[]) {
 		translate(t);
 		freeparser(p);
 		
-		printasmlns(t, output);
+		printlns(t->output, output);
 
 		// freeing rest
 		freetranslator(t);
